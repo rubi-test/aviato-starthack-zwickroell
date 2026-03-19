@@ -2,7 +2,7 @@
 
 import numpy as np
 from db import get_collection
-from tools.utils import extract_property_values
+from tools.utils import extract_property_values, fuzzy_match_name
 
 NUMERIC_PROPS = [
     ("tensile_strength_mpa", "MPa"),
@@ -16,6 +16,8 @@ NUMERIC_PROPS = [
 def summarize_material_properties(material: str) -> dict:
     """Statistical summary of all measured properties for a material."""
     tests_col = get_collection("Tests")
+    known = tests_col.distinct("TestParametersFlat.MATERIAL")
+    material = fuzzy_match_name(material, known)
     matched = list(tests_col.find({"TestParametersFlat.MATERIAL": material}))
 
     if not matched:

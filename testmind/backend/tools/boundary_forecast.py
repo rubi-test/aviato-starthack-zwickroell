@@ -3,7 +3,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from db import get_collection
-from tools.utils import parse_date, infer_test_type_filter
+from tools.utils import fuzzy_match_name, parse_date, infer_test_type_filter
 
 
 def boundary_forecast(
@@ -15,6 +15,8 @@ def boundary_forecast(
 ) -> dict:
     """Forecast if a property will cross a boundary value based on current trend."""
     tests_col = get_collection("Tests")
+    known = tests_col.distinct("TestParametersFlat.MATERIAL")
+    material = fuzzy_match_name(material, known)
     query = {"TestParametersFlat.MATERIAL": material, **infer_test_type_filter(property)}
     all_tests = list(tests_col.find(query))
 

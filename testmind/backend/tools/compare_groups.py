@@ -3,7 +3,7 @@
 import numpy as np
 from scipy import stats as sp_stats
 from db import get_collection
-from tools.utils import extract_property_values, filter_by_date_range, infer_test_type_filter
+from tools.utils import extract_property_values, filter_by_date_range, fuzzy_match_name, infer_test_type_filter
 
 GROUP_FIELD_MAP = {
     "material": "TestParametersFlat.MATERIAL",
@@ -30,6 +30,16 @@ def compare_groups(
 
     tests_col = get_collection("Tests")
     type_filter = infer_test_type_filter(property)
+
+    # Fuzzy match for material/site comparisons
+    if group_type == "material":
+        known = tests_col.distinct("TestParametersFlat.MATERIAL")
+        group_a = fuzzy_match_name(group_a, known)
+        group_b = fuzzy_match_name(group_b, known)
+    elif group_type == "site":
+        known = tests_col.distinct("TestParametersFlat.SITE")
+        group_a = fuzzy_match_name(group_a, known)
+        group_b = fuzzy_match_name(group_b, known)
 
     docs_a = list(tests_col.find({field: group_a, **type_filter}))
     docs_b = list(tests_col.find({field: group_b, **type_filter}))

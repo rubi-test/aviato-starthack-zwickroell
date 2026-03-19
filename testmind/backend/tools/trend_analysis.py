@@ -3,7 +3,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from db import get_collection
-from tools.utils import extract_property_values, parse_date, infer_test_type_filter
+from tools.utils import extract_property_values, fuzzy_match_name, parse_date, infer_test_type_filter
 
 
 def trend_analysis(
@@ -16,14 +16,16 @@ def trend_analysis(
     query = {**infer_test_type_filter(property)}
     filter_desc = []
 
+    tests_col = get_collection("Tests")
+
     if material:
+        known = tests_col.distinct("TestParametersFlat.MATERIAL")
+        material = fuzzy_match_name(material, known)
         query["TestParametersFlat.MATERIAL"] = material
         filter_desc.append(f"material={material}")
     if site:
         query["TestParametersFlat.SITE"] = site
         filter_desc.append(f"site={site}")
-
-    tests_col = get_collection("Tests")
     all_tests = list(tests_col.find(query))
 
     if not all_tests:

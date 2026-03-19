@@ -2,7 +2,7 @@
 
 from collections import Counter
 from db import get_collection
-from tools.utils import filter_by_date_range, test_to_summary
+from tools.utils import filter_by_date_range, fuzzy_match_name, parse_natural_date_range, test_to_summary
 
 
 def filter_tests(
@@ -18,6 +18,25 @@ def filter_tests(
     limit: int = 50,
 ) -> dict:
     """Search and filter tests by metadata. At least one parameter should be provided."""
+    tests_col = get_collection("Tests")
+
+    # Resolve natural language date ranges
+    if date_from and not date_to:
+        nl_from, nl_to = parse_natural_date_range(date_from)
+        if nl_from:
+            date_from, date_to = nl_from, nl_to
+
+    # Fuzzy match string fields
+    if material:
+        known = tests_col.distinct("TestParametersFlat.MATERIAL")
+        material = fuzzy_match_name(material, known)
+    if customer:
+        known = tests_col.distinct("TestParametersFlat.CUSTOMER")
+        customer = fuzzy_match_name(customer, known)
+    if tester:
+        known = tests_col.distinct("TestParametersFlat.TESTER")
+        tester = fuzzy_match_name(tester, known)
+
     query = {}
     filter_descriptions = []
 
@@ -43,7 +62,6 @@ def filter_tests(
         query["TestParametersFlat.Date"] = date
         filter_descriptions.append(f"date={date}")
 
-    tests_col = get_collection("Tests")
     matched = list(tests_col.find(query))
 
     # Apply date range filtering (can't do in MongoDB query for DD.MM.YYYY strings)

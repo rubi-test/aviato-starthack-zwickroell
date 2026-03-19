@@ -20,7 +20,9 @@ junior engineers understand test data from ZwickRoell machines. Always:
 - When comparing machines or sites, always mention practical implications
 - "My local plant" means the site from context.default_site (default: Ulm)
 - When presenting results, be specific about what you found and what it means
-- Keep answers concise but complete — a few sentences, not paragraphs"""
+- Keep answers concise but complete — a few sentences, not paragraphs
+- Format your responses using Markdown: use **bold** for key values and material names, use bullet points for lists, use ### headings to organize sections when the answer has multiple parts
+- IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")"""
 
 TOOL_SCHEMAS_OPENAI = [
     {
@@ -113,6 +115,40 @@ TOOL_SCHEMAS_OPENAI = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "correlate_properties",
+            "description": "Find the statistical correlation between two material properties. Answers: 'If property X changes, does property Y tend to change with it?' Use for questions about relationships between measurements.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "property_x": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "First property (X axis)"},
+                    "property_y": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Second property (Y axis)"},
+                    "material": {"type": "string", "description": "Optional: limit to a specific material"},
+                    "test_type": {"type": "string", "enum": ["tensile", "compression", "charpy"], "description": "Optional: limit to a specific test type"},
+                },
+                "required": ["property_x", "property_y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_compliance",
+            "description": "Check if test results for a material meet an internal specification or guideline threshold. Returns pass rate and non-compliant tests.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "material": {"type": "string", "description": "Material name"},
+                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to check"},
+                    "threshold_value": {"type": "number", "description": "The minimum or maximum acceptable value"},
+                    "direction": {"type": "string", "enum": ["above", "below"], "description": "'above' = must be >= threshold (minimum spec). 'below' = must be <= threshold (maximum spec)."},
+                },
+                "required": ["material", "property", "threshold_value"],
+            },
+        },
+    },
 ]
 
 # Map tool names to chart types
@@ -122,6 +158,8 @@ TOOL_CHART_MAP = {
     "compare_groups": "stat_cards",
     "trend_analysis": "time_series",
     "boundary_forecast": "forecast",
+    "correlate_properties": "scatter",
+    "check_compliance": "compliance",
 }
 
 
@@ -132,6 +170,8 @@ def _execute_tool(name: str, args: dict) -> dict:
     from tools.compare_groups import compare_groups
     from tools.trend_analysis import trend_analysis
     from tools.boundary_forecast import boundary_forecast
+    from tools.correlate_properties import correlate_properties
+    from tools.check_compliance import check_compliance
 
     tool_map = {
         "filter_tests": filter_tests,
@@ -139,12 +179,44 @@ def _execute_tool(name: str, args: dict) -> dict:
         "compare_groups": compare_groups,
         "trend_analysis": trend_analysis,
         "boundary_forecast": boundary_forecast,
+        "correlate_properties": correlate_properties,
+        "check_compliance": check_compliance,
     }
 
     fn = tool_map.get(name)
     if not fn:
         return {"result": {"error": f"Unknown tool: {name}"}, "steps": []}
     return fn(**args)
+
+
+def _generate_followups_openai(answer: str, tool_name: str, tool_result: dict) -> list[str]:
+    """Generate 3 follow-up question suggestions using OpenAI."""
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        prompt = (
+            f"A materials testing engineer just received this analysis result:\n\n"
+            f"Tool used: {tool_name}\n"
+            f"Answer: {answer[:500]}\n\n"
+            f"Suggest exactly 3 concise follow-up questions the engineer might ask next. "
+            f"Return ONLY a JSON array of 3 strings, no explanation. "
+            f"Example: [\"Question 1?\", \"Question 2?\", \"Question 3?\"]"
+        )
+        resp = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=200,
+        )
+        content = resp.choices[0].message.content.strip()
+        # Extract JSON array
+        start = content.find("[")
+        end = content.rfind("]") + 1
+        if start >= 0 and end > start:
+            return json.loads(content[start:end])
+    except Exception:
+        pass
+    return []
 
 
 def _chat_openai(messages: list[dict], context: dict) -> dict:
@@ -191,6 +263,7 @@ def _chat_openai(messages: list[dict], context: dict) -> dict:
         )
 
         answer = followup.choices[0].message.content
+        followups = _generate_followups_openai(answer, tool_name, tool_result["result"])
         return {
             "answer": answer,
             "tool_used": tool_name,
@@ -198,6 +271,7 @@ def _chat_openai(messages: list[dict], context: dict) -> dict:
             "steps": tool_result.get("steps", []),
             "chart_type": TOOL_CHART_MAP.get(tool_name, "text"),
             "chart_data": tool_result["result"],
+            "suggested_followups": followups,
         }
 
     # No tool used — direct answer
@@ -208,6 +282,7 @@ def _chat_openai(messages: list[dict], context: dict) -> dict:
         "steps": [],
         "chart_type": None,
         "chart_data": None,
+        "suggested_followups": [],
     }
 
 
@@ -272,6 +347,7 @@ def _chat_anthropic(messages: list[dict], context: dict) -> dict:
         )
 
         answer = "".join(b.text for b in followup.content if hasattr(b, "text"))
+        followups = _generate_followups_openai(answer, tool_name, tool_result["result"])
         return {
             "answer": answer,
             "tool_used": tool_name,
@@ -279,6 +355,7 @@ def _chat_anthropic(messages: list[dict], context: dict) -> dict:
             "steps": tool_result.get("steps", []),
             "chart_type": TOOL_CHART_MAP.get(tool_name, "text"),
             "chart_data": tool_result["result"],
+            "suggested_followups": followups,
         }
 
     # No tool used
@@ -290,6 +367,7 @@ def _chat_anthropic(messages: list[dict], context: dict) -> dict:
         "steps": [],
         "chart_type": None,
         "chart_data": None,
+        "suggested_followups": [],
     }
 
 
