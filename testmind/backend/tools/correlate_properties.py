@@ -3,7 +3,7 @@
 import numpy as np
 from scipy import stats as sp_stats
 from db import get_collection
-from tools.utils import fuzzy_match_name, infer_test_type_filter
+from tools.utils import fuzzy_match_name, infer_test_type_filter, normalize_property
 
 
 def correlate_properties(
@@ -16,6 +16,8 @@ def correlate_properties(
     Compute Pearson correlation between two numeric properties across tests.
     Answers: 'If property X changes, does property Y tend to change too?'
     """
+    property_x = normalize_property(property_x)
+    property_y = normalize_property(property_y)
     tests_col = get_collection("Tests")
     query = {}
 

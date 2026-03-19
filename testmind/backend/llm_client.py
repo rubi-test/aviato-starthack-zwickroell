@@ -22,7 +22,27 @@ junior engineers understand test data from ZwickRoell machines. Always:
 - When presenting results, be specific about what you found and what it means
 - Keep answers concise but complete — a few sentences, not paragraphs
 - Format your responses using Markdown: use **bold** for key values and material names, use bullet points for lists, use ### headings to organize sections when the answer has multiple parts
-- IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")"""
+- IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")
+
+## Chart and Visualization Rules — CRITICAL
+
+NEVER suggest the user make a chart themselves in Excel, Python, or any other tool.
+NEVER say things like "you could plot this in Excel" or "here's how to visualize it in Python".
+NEVER fabricate or embed image URLs, placeholder images, or markdown image syntax (![...](...)) — charts are rendered automatically by the system when you call a tool.
+When a user asks for a chart, graph, trend, plot, histogram, or visualization — ALWAYS call the appropriate tool to produce it directly.
+
+Use this mapping to decide which tool to call:
+- "show trend / how has X changed over time / is X declining or improving" → call trend_analysis
+- "compare X vs Y / difference between machines or materials" → call compare_groups
+- "will X reach a limit / forecast / when will it violate" → call boundary_forecast
+- "correlation / relationship between X and Y" → call correlate_properties
+- "does it meet spec / compliance / pass rate" → call check_compliance
+- "histogram / distribution / how are values spread / frequency of values" → call distribution_analysis
+- "show me the tests / list results / filter by date or customer" → call filter_tests
+- "summarize / what are the properties of material X" → call summarize_material_properties
+
+If the request is ambiguous, pick the closest matching tool and call it.
+Only decline to show a chart if the request is genuinely impossible (e.g. asks for data that does not exist in the database at all) — in that case, explain clearly what data is missing."""
 
 TOOL_SCHEMAS_OPENAI = [
     {
@@ -72,7 +92,7 @@ TOOL_SCHEMAS_OPENAI = [
                     "group_type": {"type": "string", "enum": ["material", "machine", "site"], "description": "What to compare by"},
                     "group_a": {"type": "string", "description": "First group name"},
                     "group_b": {"type": "string", "description": "Second group name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to compare"},
+                    "property": {"type": "string", "description": "Property column name to compare (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any property in the database)"},
                     "date_from": {"type": "string", "description": "Start date filter (DD.MM.YYYY)"},
                     "date_to": {"type": "string", "description": "End date filter (DD.MM.YYYY)"},
                 },
@@ -88,7 +108,7 @@ TOOL_SCHEMAS_OPENAI = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to analyze"},
+                    "property": {"type": "string", "description": "Property column name to analyze (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any property in the database)"},
                     "material": {"type": "string", "description": "Material name"},
                     "site": {"type": "string", "description": "Site filter"},
                     "months_back": {"type": "integer", "description": "How many months of history to analyze", "default": 12},
@@ -106,7 +126,7 @@ TOOL_SCHEMAS_OPENAI = [
                 "type": "object",
                 "properties": {
                     "material": {"type": "string", "description": "Material name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to forecast"},
+                    "property": {"type": "string", "description": "Property column name to forecast (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any property in the database)"},
                     "boundary_value": {"type": "number", "description": "The boundary/limit value to check against"},
                     "months_history": {"type": "integer", "description": "Months of history to use", "default": 12},
                     "months_forecast": {"type": "integer", "description": "Months into the future to forecast", "default": 24},
@@ -123,12 +143,28 @@ TOOL_SCHEMAS_OPENAI = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "property_x": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "First property (X axis)"},
-                    "property_y": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Second property (Y axis)"},
+                    "property_x": {"type": "string", "description": "First property column name (X axis), e.g. tensile_strength_mpa or any property in the database"},
+                    "property_y": {"type": "string", "description": "Second property column name (Y axis), e.g. elongation_at_break_pct or any property in the database"},
                     "material": {"type": "string", "description": "Optional: limit to a specific material"},
                     "test_type": {"type": "string", "enum": ["tensile", "compression", "charpy"], "description": "Optional: limit to a specific test type"},
                 },
                 "required": ["property_x", "property_y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "distribution_analysis",
+            "description": "Show the distribution (histogram) of a property's values for a material. Use when the user asks for a histogram, distribution, spread, frequency, or 'how are values distributed'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "property": {"type": "string", "description": "Property column name (e.g. tensile_strength_mpa, max_force_n, or any property in the database)"},
+                    "material": {"type": "string", "description": "Optional: limit to a specific material"},
+                    "n_bins": {"type": "integer", "description": "Number of histogram bins (default 10)", "default": 10},
+                },
+                "required": ["property"],
             },
         },
     },
@@ -141,7 +177,7 @@ TOOL_SCHEMAS_OPENAI = [
                 "type": "object",
                 "properties": {
                     "material": {"type": "string", "description": "Material name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to check"},
+                    "property": {"type": "string", "description": "Property column name to check compliance for (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any property in the database)"},
                     "threshold_value": {"type": "number", "description": "The minimum or maximum acceptable value"},
                     "direction": {"type": "string", "enum": ["above", "below"], "description": "'above' = must be >= threshold (minimum spec). 'below' = must be <= threshold (maximum spec)."},
                 },
@@ -160,6 +196,7 @@ TOOL_CHART_MAP = {
     "boundary_forecast": "forecast",
     "correlate_properties": "scatter",
     "check_compliance": "compliance",
+    "distribution_analysis": "histogram",
 }
 
 
@@ -172,6 +209,7 @@ def _execute_tool(name: str, args: dict) -> dict:
     from tools.boundary_forecast import boundary_forecast
     from tools.correlate_properties import correlate_properties
     from tools.check_compliance import check_compliance
+    from tools.distribution_analysis import distribution_analysis
 
     tool_map = {
         "filter_tests": filter_tests,
@@ -181,6 +219,7 @@ def _execute_tool(name: str, args: dict) -> dict:
         "boundary_forecast": boundary_forecast,
         "correlate_properties": correlate_properties,
         "check_compliance": check_compliance,
+        "distribution_analysis": distribution_analysis,
     }
 
     fn = tool_map.get(name)

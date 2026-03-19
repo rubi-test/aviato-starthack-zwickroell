@@ -3,7 +3,7 @@
 import numpy as np
 from scipy import stats as sp_stats
 from db import get_collection
-from tools.utils import extract_property_values, filter_by_date_range, fuzzy_match_name, infer_test_type_filter
+from tools.utils import extract_property_values, filter_by_date_range, fuzzy_match_name, infer_test_type_filter, normalize_property
 
 GROUP_FIELD_MAP = {
     "material": "TestParametersFlat.MATERIAL",
@@ -21,6 +21,7 @@ def compare_groups(
     date_to: str = None,
 ) -> dict:
     """Statistical comparison between two groups for a given property."""
+    property = normalize_property(property)
     field = GROUP_FIELD_MAP.get(group_type)
     if not field:
         return {

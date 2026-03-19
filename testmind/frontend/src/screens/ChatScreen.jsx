@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { sendChatMessage } from "../api";
 import ChatThread from "../components/ChatThread";
 import ResultsPanel from "../components/ResultsPanel";
@@ -25,7 +25,7 @@ export default function ChatScreen({ initialMessage, onBack }) {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState(null);
+  const [responses, setResponses] = useState([]);
   const [savedQueries, setSavedQueries] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("tm_saved_templates") || "[]");
@@ -34,6 +34,19 @@ export default function ChatScreen({ initialMessage, onBack }) {
     }
   });
   const sentInitial = useRef(false);
+  const resultsPanelRef = useRef(null);
+  const resultRefs = useRef([]);
+
+  // Auto-scroll results panel to the newest result when responses grow
+  useEffect(() => {
+    if (responses.length === 0) return;
+    const lastRef = resultRefs.current[responses.length - 1];
+    lastRef?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [responses.length]);
+
+  const scrollToResult = useCallback((index) => {
+    resultRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   // Auto-send the initial message once on mount
   useEffect(() => {
@@ -56,12 +69,18 @@ export default function ChatScreen({ initialMessage, onBack }) {
 
       const assistantMsg = { role: "assistant", content: result.answer };
       setMessages((prev) => [...prev, assistantMsg]);
+
+      // Include tool_result in history so the LLM has data context in follow-ups
+      const toolContext = result.tool_result
+        ? `\n\n[Data retrieved: ${JSON.stringify(result.tool_result).substring(0, 1200)}]`
+        : "";
       setHistory((prev) => [
         ...prev,
         { role: "user", content: text },
-        { role: "assistant", content: result.answer },
+        { role: "assistant", content: result.answer + toolContext },
       ]);
-      setResponse(result);
+
+      setResponses((prev) => [...prev, { ...result, question: text }]);
     } catch {
       const errorMsg = {
         role: "assistant",
@@ -110,15 +129,40 @@ export default function ChatScreen({ initialMessage, onBack }) {
             disabled={isLoading}
             onBookmark={handleBookmark}
             savedQueries={savedQueries}
+            onScrollToResult={scrollToResult}
           />
         </div>
 
         {/* Right — Results (60%) */}
-        <div className="w-3/5 bg-white overflow-hidden">
-          <ResultsPanel
-            response={response}
-            onFollowUp={handleSend}
-          />
+        <div ref={resultsPanelRef} className="w-3/5 bg-white overflow-y-auto">
+          {responses.length === 0 && !isLoading ? (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="text-center space-y-2">
+                <p className="text-5xl">📊</p>
+                <p className="text-sm font-medium text-gray-500">Results will appear here</p>
+                <p className="text-xs text-gray-400">Ask a question on the left to get started</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-5 space-y-8">
+              {responses.map((resp, i) => (
+                <div key={i} ref={(el) => (resultRefs.current[i] = el)}>
+                  {responses.length > 1 && (
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[10px]">{i + 1}</span>
+                      {resp.question}
+                    </p>
+                  )}
+                  <ResultsPanel response={resp} onFollowUp={handleSend} />
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+                  <span className="animate-stepPulse">⋯</span> Analysing…
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

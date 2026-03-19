@@ -18,6 +18,8 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
+  BarChart,
+  Bar,
 } from "recharts";
 import StatCards from "./StatCards";
 import WhatIfSimulator from "./WhatIfSimulator";
@@ -631,6 +633,64 @@ function DrillDownPanel({ date, data, unit, onClose }) {
   );
 }
 
+function HistogramChart({ data }) {
+  const { bins = [], property = "", material = "", unit = "", n, mean, std, min, max } = data;
+
+  const label = property.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const barData = bins.map((b) => ({ name: b.label, count: b.count }));
+
+  return (
+    <div className="space-y-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-5 gap-3">
+        {[
+          { label: "Samples", value: n },
+          { label: "Mean", value: `${mean} ${unit}` },
+          { label: "Std Dev", value: `${std} ${unit}` },
+          { label: "Min", value: `${min} ${unit}` },
+          { label: "Max", value: `${max} ${unit}` },
+        ].map(({ label: l, value }) => (
+          <div key={l} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+            <p className="text-xs text-gray-400 uppercase tracking-widest">{l}</p>
+            <p className="text-sm font-semibold text-gray-800 mt-0.5">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Histogram */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2">
+          Distribution of {label}{material ? ` — ${material}` : ""}
+        </p>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={barData} margin={{ top: 4, right: 16, left: 0, bottom: 48 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              angle={-35}
+              textAnchor="end"
+              interval={0}
+              label={{ value: `${label} (${unit})`, position: "insideBottom", offset: -36, fontSize: 11, fill: "#6b7280" }}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              allowDecimals={false}
+              label={{ value: "Count", angle: -90, position: "insideLeft", fontSize: 11, fill: "#6b7280" }}
+            />
+            <Tooltip
+              formatter={(v) => [v, "Count"]}
+              labelFormatter={(l) => `Range: ${l} ${unit}`}
+              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            />
+            <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export default function ChartArea({ chartType, chartData }) {
   const [drillDown, setDrillDown] = useState(null);
 
@@ -639,6 +699,7 @@ export default function ChartArea({ chartType, chartData }) {
   if (chartType === "table") return <DataTable data={chartData} />;
   if (chartType === "stat_cards") return <StatCards data={chartData} />;
   if (chartType === "compliance") return <ComplianceChart data={chartData} />;
+  if (chartType === "histogram") return <HistogramChart data={chartData} />;
 
   const unit = unitFor(chartData.property);
 

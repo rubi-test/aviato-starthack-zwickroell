@@ -182,10 +182,27 @@ PROPERTY_TEST_TYPE = {
     "impact_energy_j": "charpy",
 }
 
+# All known property column names — extend this list when integrating a real database
+KNOWN_PROPERTIES = list(PROPERTY_TEST_TYPE.keys()) + ["max_force_n"]
+
+
+def normalize_property(prop: str) -> str:
+    """Resolve a free-form property name to the nearest known DB column name.
+
+    Handles natural language ("tensile strength"), partial names ("modulus"),
+    and already-correct snake_case names. Falls back to the original value
+    so unknown properties from a future database still pass through.
+    """
+    if not prop:
+        return prop
+    normalized = prop.strip().lower().replace(" ", "_").replace("-", "_")
+    return fuzzy_match_name(normalized, KNOWN_PROPERTIES, cutoff=0.45)
+
 
 def infer_test_type_filter(property: str) -> dict:
     """Return a MongoDB query fragment to filter by the test type that produces this property."""
-    test_type = PROPERTY_TEST_TYPE.get(property)
+    resolved = normalize_property(property)
+    test_type = PROPERTY_TEST_TYPE.get(resolved)
     if test_type:
         return {"TestParametersFlat.TYPE_OF_TESTING_STR": test_type}
     return {}

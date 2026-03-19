@@ -38,24 +38,14 @@ function exportToCSV(chartData, toolUsed) {
 }
 
 export default function ResultsPanel({ response, onFollowUp }) {
-  if (!response) {
-    return (
-      <div className="h-full flex items-center justify-center text-gray-400">
-        <div className="text-center space-y-2">
-          <p className="text-5xl">📊</p>
-          <p className="text-sm font-medium text-gray-500">Results will appear here</p>
-          <p className="text-xs text-gray-400">Ask a question on the left to get started</p>
-        </div>
-      </div>
-    );
-  }
+  if (!response) return null;
 
   const { answer, chart_type, chart_data, steps, tool_used, tool_result, suggested_followups } = response;
 
   const canExport = chart_type === "table" || chart_type === "compliance";
 
   return (
-    <div className="h-full overflow-y-auto p-5 space-y-4">
+    <div className="space-y-4">
       {/* Natural language answer */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
         <div className="flex items-start justify-between gap-2">

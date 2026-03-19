@@ -3,7 +3,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from db import get_collection
-from tools.utils import extract_property_values, fuzzy_match_name, parse_date, infer_test_type_filter
+from tools.utils import extract_property_values, fuzzy_match_name, parse_date, infer_test_type_filter, normalize_property
 
 
 def trend_analysis(
@@ -13,6 +13,7 @@ def trend_analysis(
     months_back: int = 12,
 ) -> dict:
     """Detect trends over time for a property, aggregated to monthly averages."""
+    property = normalize_property(property)
     query = {**infer_test_type_filter(property)}
     filter_desc = []
 

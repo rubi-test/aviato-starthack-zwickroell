@@ -2,7 +2,7 @@
 
 import numpy as np
 from db import get_collection
-from tools.utils import extract_property_values, fuzzy_match_name, test_to_summary
+from tools.utils import extract_property_values, fuzzy_match_name, normalize_property, test_to_summary
 
 
 def check_compliance(
@@ -19,6 +19,7 @@ def check_compliance(
     tests_col = get_collection("Tests")
     known = tests_col.distinct("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
+    property = normalize_property(property)
 
     all_tests = list(tests_col.find({"TestParametersFlat.MATERIAL": material}))
 

@@ -3,7 +3,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from db import get_collection
-from tools.utils import fuzzy_match_name, parse_date, infer_test_type_filter
+from tools.utils import fuzzy_match_name, parse_date, infer_test_type_filter, normalize_property
 
 
 def boundary_forecast(
@@ -17,6 +17,7 @@ def boundary_forecast(
     tests_col = get_collection("Tests")
     known = tests_col.distinct("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
+    property = normalize_property(property)
     query = {"TestParametersFlat.MATERIAL": material, **infer_test_type_filter(property)}
     all_tests = list(tests_col.find(query))
 
