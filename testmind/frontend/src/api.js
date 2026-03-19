@@ -28,3 +28,8 @@ export async function fetchHealthScores() {
   const { data } = await api.get("/api/health-scores");
   return data;
 }
+
+export async function buildGraph(prompt, history = [], currentSpec = null) {
+  const { data } = await api.post("/api/graph-builder", { prompt, history, current_spec: currentSpec });
+  return data;
+}

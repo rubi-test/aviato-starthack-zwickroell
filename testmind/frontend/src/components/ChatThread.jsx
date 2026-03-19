@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 
-/** Extract the first plain-language summary line from the LLM response. */
 function summarize(text) {
   if (!text) return "";
   const firstLine = text.split("\n")[0].replace(/[#*`_]/g, "").trim();
@@ -31,15 +30,11 @@ const AUTOCOMPLETE_SUGGESTIONS = [
   "Compare Ulm and Kennesaw site results",
 ];
 
-const MATERIALS = [
-  "FancyPlast 42", "UltraPlast 99", "Hostacomp G2",
-  "Stardust", "FancyPlast 84", "NovaTex 10",
-];
+const MATERIALS = ["FancyPlast 42", "UltraPlast 99", "Hostacomp G2", "Stardust", "FancyPlast 84", "NovaTex 10"];
 
 function getAutocompleteSuggestions(input) {
   if (!input || input.length < 2) return [];
   const lower = input.toLowerCase();
-
   const suggestions = [];
   for (const template of AUTOCOMPLETE_SUGGESTIONS) {
     for (const mat of MATERIALS) {
@@ -54,8 +49,6 @@ function getAutocompleteSuggestions(input) {
       }
     }
   }
-
-  // Deduplicate and limit
   return [...new Set(suggestions)].slice(0, 5);
 }
 
@@ -71,15 +64,9 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Step timeline progression during loading
   useEffect(() => {
-    if (!isLoading) {
-      setActiveStep(0);
-      setElapsed(0);
-      return;
-    }
-    setActiveStep(0);
-    setElapsed(0);
+    if (!isLoading) { setActiveStep(0); setElapsed(0); return; }
+    setActiveStep(0); setElapsed(0);
     const timers = ANALYSIS_STEPS.map((_, i) =>
       i === 0 ? null : setTimeout(() => setActiveStep(i), i * 900)
     );
@@ -87,7 +74,6 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
     return () => { timers.forEach((t) => t && clearTimeout(t)); clearInterval(interval); };
   }, [isLoading]);
 
-  // Update autocomplete suggestions
   useEffect(() => {
     setSuggestions(getAutocompleteSuggestions(input));
     setSelectedSuggestion(-1);
@@ -96,94 +82,64 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
   const handleSend = (text) => {
     const msg = (text || input).trim();
     if (!msg || disabled || isLoading) return;
-    setInput("");
-    setSuggestions([]);
-    onSend(msg);
+    setInput(""); setSuggestions([]); onSend(msg);
   };
 
   const handleKeyDown = (e) => {
     if (suggestions.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedSuggestion(i => Math.min(i + 1, suggestions.length - 1));
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedSuggestion(i => Math.max(i - 1, -1));
-        return;
-      }
-      if (e.key === "Tab" && selectedSuggestion >= 0) {
-        e.preventDefault();
-        setInput(suggestions[selectedSuggestion]);
-        setSuggestions([]);
-        return;
-      }
+      if (e.key === "ArrowDown") { e.preventDefault(); setSelectedSuggestion(i => Math.min(i + 1, suggestions.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setSelectedSuggestion(i => Math.max(i - 1, -1)); return; }
+      if (e.key === "Tab" && selectedSuggestion >= 0) { e.preventDefault(); setInput(suggestions[selectedSuggestion]); setSuggestions([]); return; }
     }
     if (e.key === "Enter") {
-      if (selectedSuggestion >= 0 && suggestions.length > 0) {
-        e.preventDefault();
-        handleSend(suggestions[selectedSuggestion]);
-      } else {
-        handleSend();
-      }
+      if (selectedSuggestion >= 0 && suggestions.length > 0) { e.preventDefault(); handleSend(suggestions[selectedSuggestion]); }
+      else { handleSend(); }
     }
-    if (e.key === "Escape") {
-      setSuggestions([]);
-    }
+    if (e.key === "Escape") { setSuggestions([]); }
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Message list */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 thin-scrollbar">
         {messages.length === 0 && (
-          <p className="text-xs text-gray-400 text-center pt-8">
+          <p className="text-xs text-slate-600 text-center pt-8 font-mono">
             Ask a question to get started
           </p>
         )}
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group`}
-          >
+          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group`}>
             <div className="flex flex-col items-end gap-1 max-w-[88%]">
               <div
-                className={`w-full px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                className={`w-full px-4 py-2.5 rounded-lg text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-br-sm"
-                    : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
+                    : "bg-[#1e2433] border border-[#2a3144] text-slate-300 rounded-bl-sm"
                 }`}
               >
                 {msg.role === "assistant" ? (
                   <div>
                     <p>{summarize(msg.content)}</p>
-                    <p className="text-xs text-blue-500 mt-1.5">See full details in the results panel →</p>
+                    <p className="text-xs text-blue-400/60 mt-1.5 font-mono">See results panel →</p>
                   </div>
-                ) : (
-                  msg.content
-                )}
+                ) : msg.content}
               </div>
               {msg.time && (
-                <span className="text-[10px] text-gray-300 font-mono px-1">
+                <span className="text-[10px] text-slate-600 font-mono px-1">
                   {msg.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
-              {/* Bookmark button on user messages */}
               {msg.role === "user" && onBookmark && (
                 <button
                   onClick={() => onBookmark(msg.content)}
-                  className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2 py-0.5 rounded ${
-                    savedQueries.includes(msg.content)
-                      ? "text-blue-600"
-                      : "text-gray-400 hover:text-gray-600"
+                  className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2 py-0.5 rounded font-mono ${
+                    savedQueries.includes(msg.content) ? "text-blue-400" : "text-slate-600 hover:text-slate-400"
                   }`}
-                  title={savedQueries.includes(msg.content) ? "Bookmarked" : "Bookmark this query"}
+                  title={savedQueries.includes(msg.content) ? "Bookmarked" : "Bookmark"}
                 >
                   <svg className="w-3 h-3" fill={savedQueries.includes(msg.content) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
-                  {savedQueries.includes(msg.content) ? "Saved" : "Save"}
+                  {savedQueries.includes(msg.content) ? "SAVED" : "SAVE"}
                 </button>
               )}
             </div>
@@ -191,29 +147,24 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
         ))}
         {isLoading && (
           <div className="flex justify-start animate-fadeIn">
-            <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm text-sm w-64">
+            <div className="bg-[#1e2433] border border-[#2a3144] px-4 py-3 rounded-lg rounded-bl-sm text-sm w-64">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-gray-400 font-mono">{elapsed.toFixed(1)}s</span>
+                <span className="text-[10px] text-slate-500 font-mono">{elapsed.toFixed(1)}s</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               </div>
               <div className="space-y-1.5">
                 {ANALYSIS_STEPS.map((step, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-2 transition-all duration-300 ${
-                      i <= activeStep ? "opacity-100" : "opacity-0 h-0 overflow-hidden"
-                    }`}
-                  >
+                  <div key={i} className={`flex items-center gap-2 transition-all duration-300 ${i <= activeStep ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
                     {i < activeStep ? (
-                      <svg className="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : i === activeStep ? (
                       <span className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
                     ) : (
-                      <span className="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0" />
+                      <span className="w-3.5 h-3.5 rounded-full bg-slate-700 flex-shrink-0" />
                     )}
-                    <span className={`text-xs ${i < activeStep ? "text-gray-400" : i === activeStep ? "text-blue-600 font-medium" : "text-gray-300"}`}>
+                    <span className={`text-xs font-mono ${i < activeStep ? "text-slate-500" : i === activeStep ? "text-blue-400" : "text-slate-600"}`}>
                       {step}
                     </span>
                   </div>
@@ -225,27 +176,26 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar with autocomplete */}
-      <div className="p-3 border-t border-gray-200 bg-white relative">
-        {/* Autocomplete dropdown */}
+      {/* Input bar */}
+      <div className="p-3 border-t border-[#1e2433] bg-[#141820] relative">
         {suggestions.length > 0 && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-20 animate-fadeIn">
+          <div className="absolute bottom-full left-3 right-3 mb-1 bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg overflow-hidden z-20 animate-fadeIn">
             {suggestions.map((s, i) => (
               <button
                 key={s}
                 onClick={() => handleSend(s)}
                 onMouseEnter={() => setSelectedSuggestion(i)}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  i === selectedSuggestion ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-50"
+                className={`w-full text-left px-4 py-2 text-sm font-mono transition-colors ${
+                  i === selectedSuggestion ? "bg-blue-900/30 text-blue-300" : "text-slate-400 hover:bg-slate-800"
                 }`}
               >
                 {s}
               </button>
             ))}
-            <div className="px-4 py-1.5 bg-gray-50 border-t border-gray-100 flex gap-3 text-[10px] text-gray-400">
-              <span><kbd className="bg-gray-100 border border-gray-200 rounded px-1 font-mono">↑↓</kbd> navigate</span>
-              <span><kbd className="bg-gray-100 border border-gray-200 rounded px-1 font-mono">Tab</kbd> fill</span>
-              <span><kbd className="bg-gray-100 border border-gray-200 rounded px-1 font-mono">Enter</kbd> send</span>
+            <div className="px-4 py-1.5 bg-[#161b26] border-t border-[#2a3144] flex gap-3 text-[10px] text-slate-600 font-mono">
+              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">↑↓</kbd> nav</span>
+              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">Tab</kbd> fill</span>
+              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">Enter</kbd> send</span>
             </div>
           </div>
         )}
@@ -257,14 +207,14 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
             onKeyDown={handleKeyDown}
             placeholder="Ask a follow-up question…"
             disabled={disabled || isLoading}
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+            className="flex-1 px-4 py-2.5 border border-slate-700 rounded-lg text-sm bg-[#1e2433] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-900 disabled:text-slate-600 transition-colors font-mono"
           />
           <button
             onClick={() => handleSend()}
             disabled={disabled || isLoading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-mono hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
           >
-            Send
+            SEND
           </button>
         </div>
       </div>

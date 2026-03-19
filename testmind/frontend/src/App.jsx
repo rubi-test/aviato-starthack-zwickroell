@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import HomeScreen from "./screens/HomeScreen";
 import ChatScreen from "./screens/ChatScreen";
 import ExploreScreen from "./screens/ExploreScreen";
+import GraphBuilderScreen from "./screens/GraphBuilderScreen";
 import Sidebar from "./components/Sidebar";
 import CommandPalette from "./components/CommandPalette";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
@@ -54,6 +55,8 @@ export default function App() {
               <ChatScreen key={chatKey} initialMessage={initialMessage} onBack={navigateHome} />
             ) : screen === "explore" ? (
               <ExploreScreen onBack={navigateHome} />
+            ) : screen === "graph-builder" ? (
+              <GraphBuilderScreen onBack={navigateHome} />
             ) : (
               <HomeScreen onNavigateToChat={navigateToChat} />
             )}

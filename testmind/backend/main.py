@@ -513,3 +513,346 @@ def explore(material: str, property: str = "tensile_strength_mpa"):
             "r_squared": r_squared,
         },
     }
+
+
+class GraphBuilderRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=2000)
+    history: list[dict] = Field(default=[], max_length=20)
+    current_spec: dict | None = None
+
+
+@app.post("/api/graph-builder")
+def graph_builder(req: GraphBuilderRequest):
+    """
+    AI-powered graph builder — interprets natural language requests and returns
+    chart configuration + data. Supports incremental updates via current_spec:
+    "add X", "remove X", "change to bar chart", etc.
+    """
+    import numpy as np
+    from db import get_collection
+
+    tests_col = get_collection("Tests")
+    all_tests = list(tests_col.find())
+
+    # Available materials and properties
+    materials = sorted(set(
+        t.get("TestParametersFlat", {}).get("MATERIAL")
+        for t in all_tests
+        if t.get("TestParametersFlat", {}).get("MATERIAL")
+    ))
+
+    properties = [
+        "tensile_strength_mpa", "tensile_modulus_mpa",
+        "elongation_at_break_pct", "impact_energy_j", "max_force_n",
+    ]
+    property_labels = {
+        "tensile_strength_mpa": "Tensile Strength (MPa)",
+        "tensile_modulus_mpa": "Tensile Modulus (MPa)",
+        "elongation_at_break_pct": "Elongation at Break (%)",
+        "impact_energy_j": "Impact Energy (J)",
+        "max_force_n": "Max Force (N)",
+    }
+
+    machines = sorted(set(
+        t.get("TestParametersFlat", {}).get("MACHINE")
+        for t in all_tests
+        if t.get("TestParametersFlat", {}).get("MACHINE")
+    ))
+
+    test_types_set = sorted(set(
+        t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR")
+        for t in all_tests
+        if t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR")
+    ))
+
+    prompt_lower = req.prompt.lower()
+    spec = req.current_spec  # The existing graph spec, if any
+
+    # ─── Detect modification intent ────────────────────────────────────────
+    is_add = any(w in prompt_lower for w in ["add ", "also ", "include ", "overlay ", "plus ", "and also", "additionally", "as well", "too", "along with"])
+    is_remove = any(w in prompt_lower for w in ["remove ", "drop ", "exclude ", "without ", "hide ", "take off", "take away", "get rid of"])
+    is_change_type = any(w in prompt_lower for w in ["change to ", "switch to ", "make it a ", "convert to ", "show as "])
+    is_clear = any(w in prompt_lower for w in ["clear", "reset", "start over", "new graph", "from scratch"])
+    has_spec = spec is not None and not is_clear
+
+    # ─── Simple NLP parser to extract intent ───────────────────────────────
+    # Determine chart type from prompt
+    prompt_chart_type = None
+    if any(w in prompt_lower for w in ["scatter", "correlation", "vs", "versus"]):
+        prompt_chart_type = "scatter"
+    elif any(w in prompt_lower for w in ["bar", "compare", "comparison", "group"]):
+        prompt_chart_type = "bar"
+    elif any(w in prompt_lower for w in ["histogram", "distribution"]):
+        prompt_chart_type = "histogram"
+    elif any(w in prompt_lower for w in ["pie", "breakdown", "proportion"]):
+        prompt_chart_type = "pie"
+    elif any(w in prompt_lower for w in ["line", "trend", "over time", "time series"]):
+        prompt_chart_type = "line"
+
+    # Find mentioned materials in this prompt
+    prompt_materials = [m for m in materials if m.lower() in prompt_lower]
+
+    # Find mentioned properties in this prompt
+    prop_aliases = {
+        "tensile strength": "tensile_strength_mpa",
+        "tensile modulus": "tensile_modulus_mpa",
+        "modulus": "tensile_modulus_mpa",
+        "elongation": "elongation_at_break_pct",
+        "impact energy": "impact_energy_j",
+        "impact": "impact_energy_j",
+        "charpy": "impact_energy_j",
+        "max force": "max_force_n",
+        "force": "max_force_n",
+        "strength": "tensile_strength_mpa",
+        "mpa": "tensile_strength_mpa",
+    }
+
+    prompt_props = []
+    for alias, prop in prop_aliases.items():
+        if alias in prompt_lower and prop not in prompt_props:
+            prompt_props.append(prop)
+
+    # ─── Resolve final spec by merging with current_spec ───────────────────
+    # Determine if this is a modification of existing graph or a fresh request
+    is_modification = has_spec and (is_add or is_remove or is_change_type)
+    # A prompt with a chart type + materials + properties is a full fresh request
+    # (e.g. "scatter plot of tensile strength vs elongation for Hostacomp G2")
+    is_full_fresh = prompt_chart_type and prompt_materials and prompt_props
+
+    if has_spec and not is_clear and not is_full_fresh:
+        # We have an existing spec — modify it
+        existing_materials = spec.get("materials", [])
+        existing_props = spec.get("properties", ["tensile_strength_mpa"])
+        chart_type = prompt_chart_type or spec.get("chart_type", "line")
+
+        # Resolve materials
+        if is_add and prompt_materials:
+            mentioned_materials = list(dict.fromkeys(existing_materials + prompt_materials))
+        elif is_remove and prompt_materials:
+            mentioned_materials = [m for m in existing_materials if m not in prompt_materials]
+            if not mentioned_materials:
+                mentioned_materials = existing_materials  # Don't remove everything
+        elif prompt_materials and not is_add and not is_remove:
+            # Mentioned materials without add/remove — replace
+            mentioned_materials = prompt_materials
+        else:
+            # No materials mentioned — keep existing
+            mentioned_materials = existing_materials
+
+        # Resolve properties
+        if is_add and prompt_props:
+            mentioned_props = list(dict.fromkeys(existing_props + prompt_props))
+        elif is_remove and prompt_props:
+            mentioned_props = [p for p in existing_props if p not in prompt_props]
+            if not mentioned_props:
+                mentioned_props = existing_props
+        elif prompt_props:
+            # Mentioned properties without add/remove — replace
+            mentioned_props = prompt_props
+        else:
+            # No properties mentioned — keep existing
+            mentioned_props = existing_props
+    else:
+        # Fresh graph (no spec, cleared, or full fresh request)
+        chart_type = prompt_chart_type or "line"
+        mentioned_materials = prompt_materials if prompt_materials else materials
+        mentioned_props = prompt_props if prompt_props else ["tensile_strength_mpa"]
+
+    # Infer test type from property
+    def test_type_for_prop(prop):
+        if "impact" in prop or "charpy" in prop.lower():
+            return "charpy"
+        return "tensile"
+
+    # ─── Build data based on chart type ────────────────────────────────────
+    from tools.utils import parse_date
+
+    series = []
+    explanation = ""
+    x_label = ""
+    y_label = property_labels.get(mentioned_props[0], mentioned_props[0])
+    title = ""
+
+    if chart_type == "scatter" and len(mentioned_props) >= 2:
+        # Scatter: prop X vs prop Y
+        prop_x = mentioned_props[0]
+        prop_y = mentioned_props[1]
+        x_label = property_labels.get(prop_x, prop_x)
+        y_label = property_labels.get(prop_y, prop_y)
+        title = f"{x_label} vs {y_label}"
+
+        for mat in mentioned_materials:
+            tt = test_type_for_prop(prop_x)
+            mat_tests = [t for t in all_tests
+                        if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
+                        and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt]
+            points = []
+            for t in mat_tests:
+                p = t.get("TestParametersFlat", {})
+                vx = p.get(prop_x)
+                vy = p.get(prop_y)
+                if vx is not None and vy is not None:
+                    points.append({"x": round(float(vx), 2), "y": round(float(vy), 2)})
+            if points:
+                series.append({"name": mat, "data": points})
+
+        explanation = f"Scatter plot of {x_label} vs {y_label} for {', '.join(mentioned_materials)}. Each point represents one test."
+
+    elif chart_type == "bar":
+        # Bar: compare materials on a property
+        prop = mentioned_props[0]
+        title = f"{y_label} by Material"
+        x_label = "Material"
+        bar_data = []
+        for mat in mentioned_materials:
+            tt = test_type_for_prop(prop)
+            vals = [
+                float(t["TestParametersFlat"][prop])
+                for t in all_tests
+                if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
+                and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt
+                and t.get("TestParametersFlat", {}).get(prop) is not None
+            ]
+            if vals:
+                bar_data.append({
+                    "name": mat,
+                    "mean": round(float(np.mean(vals)), 2),
+                    "std": round(float(np.std(vals, ddof=1)) if len(vals) > 1 else 0, 2),
+                    "n": len(vals),
+                })
+        series = [{"name": "comparison", "data": bar_data}]
+        explanation = f"Bar chart comparing {y_label} across {len(mentioned_materials)} materials. Error bars show ±1 standard deviation."
+
+    elif chart_type == "histogram":
+        # Histogram: distribution of a property
+        prop = mentioned_props[0]
+        title = f"Distribution of {y_label}"
+        x_label = y_label
+        y_label = "Frequency"
+        all_vals = []
+        for mat in mentioned_materials:
+            tt = test_type_for_prop(prop)
+            vals = [
+                float(t["TestParametersFlat"][prop])
+                for t in all_tests
+                if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
+                and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt
+                and t.get("TestParametersFlat", {}).get(prop) is not None
+            ]
+            all_vals.extend(vals)
+
+        if all_vals:
+            arr = np.array(all_vals)
+            n_bins = min(15, max(5, int(np.ceil(np.sqrt(len(arr))))))
+            counts, edges = np.histogram(arr, bins=n_bins)
+            bins_data = []
+            for i in range(len(counts)):
+                bins_data.append({
+                    "range": f"{edges[i]:.1f}-{edges[i+1]:.1f}",
+                    "count": int(counts[i]),
+                    "mid": round(float((edges[i] + edges[i+1]) / 2), 2),
+                })
+            series = [{"name": "distribution", "data": bins_data}]
+        explanation = f"Histogram showing the distribution of {property_labels.get(prop, prop)} across {len(all_vals)} tests."
+
+    elif chart_type == "pie":
+        # Pie: test counts by material or test type
+        title = "Test Distribution"
+        if any(w in prompt_lower for w in ["type", "test type", "testing"]):
+            pie_data = {}
+            for t in all_tests:
+                tt = t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR", "unknown")
+                pie_data[tt] = pie_data.get(tt, 0) + 1
+            series = [{"name": "by_type", "data": [{"name": k, "value": v} for k, v in sorted(pie_data.items())]}]
+            explanation = f"Pie chart showing test distribution by test type across {sum(pie_data.values())} total tests."
+        else:
+            pie_data = {}
+            for t in all_tests:
+                m = t.get("TestParametersFlat", {}).get("MATERIAL", "unknown")
+                pie_data[m] = pie_data.get(m, 0) + 1
+            series = [{"name": "by_material", "data": [{"name": k, "value": v} for k, v in sorted(pie_data.items())]}]
+            explanation = f"Pie chart showing test distribution by material across {sum(pie_data.values())} total tests."
+
+    else:
+        # Line: time series
+        prop = mentioned_props[0]
+        title = f"{y_label} Over Time"
+        x_label = "Month"
+
+        for mat in mentioned_materials:
+            tt = test_type_for_prop(prop)
+            mat_tests = [t for t in all_tests
+                        if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
+                        and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt]
+
+            monthly = {}
+            for t in mat_tests:
+                p = t.get("TestParametersFlat", {})
+                val = p.get(prop)
+                date_str = p.get("Date")
+                if val is not None and date_str:
+                    try:
+                        dt = parse_date(date_str)
+                        key = f"{dt.year}-{dt.month:02d}"
+                        monthly.setdefault(key, []).append(float(val))
+                    except (ValueError, TypeError):
+                        pass
+
+            points = []
+            for key in sorted(monthly.keys()):
+                vals = monthly[key]
+                points.append({"x": key, "y": round(float(np.mean(vals)), 2), "n": len(vals)})
+
+            if points:
+                series.append({"name": mat, "data": points})
+
+        explanation = f"Time series of monthly average {y_label} for {', '.join([s['name'] for s in series])}."
+
+    # Check if we actually have data
+    has_data = any(s.get("data") for s in series)
+    if not has_data:
+        # Can't build this graph — explain why and suggest alternatives
+        suggestions = []
+        if not mentioned_materials:
+            suggestions.append("Specify a material (e.g., FancyPlast 42, UltraPlast 99)")
+        if chart_type == "scatter" and len(mentioned_props) < 2:
+            suggestions.append("For scatter plots, mention two properties (e.g., 'tensile strength vs elongation')")
+        suggestions.append(f"Available materials: {', '.join(materials)}")
+        suggestions.append(f"Available properties: {', '.join(property_labels.values())}")
+
+        return {
+            "success": False,
+            "message": f"I couldn't build that graph — no matching data found for your request.",
+            "suggestions": suggestions,
+            "available": {
+                "materials": materials,
+                "properties": list(property_labels.keys()),
+                "property_labels": property_labels,
+                "chart_types": ["line", "bar", "scatter", "histogram", "pie"],
+            },
+        }
+
+    # Build the resolved spec so the frontend can track state
+    resolved_spec = {
+        "chart_type": chart_type,
+        "materials": mentioned_materials,
+        "properties": mentioned_props,
+    }
+
+    return {
+        "success": True,
+        "chart_type": chart_type,
+        "title": title,
+        "x_label": x_label,
+        "y_label": y_label,
+        "series": series,
+        "explanation": explanation,
+        "spec": resolved_spec,
+        "message": f"Here's your {chart_type} chart: {title}",
+        "available": {
+            "materials": materials,
+            "properties": list(property_labels.keys()),
+            "property_labels": property_labels,
+            "chart_types": ["line", "bar", "scatter", "histogram", "pie"],
+        },
+    }

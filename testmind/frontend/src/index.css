@@ -2,51 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base dark theme ──────────────────────────────────────────────────────── */
+body {
+  background: #0f1117;
+  color: #e2e8f0;
+  font-feature-settings: "tnum"; /* tabular numbers everywhere */
+}
+
+/* ─── Keyframes ────────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
 }
-
 @keyframes stepPulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
-
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
-
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
   50% { box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.15); }
 }
+@keyframes borderGlow {
+  0%, 100% { border-color: #334155; box-shadow: 0 0 8px rgba(59, 130, 246, 0.08); }
+  50% { border-color: #475569; box-shadow: 0 0 14px rgba(99, 102, 241, 0.12); }
+}
+@keyframes listItemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
 
+/* ─── Animation classes ────────────────────────────────────────────────────── */
 .animate-fadeIn { animation: fadeIn 0.4s ease-out both; }
 .animate-fadeInUp { animation: fadeInUp 0.5s ease-out both; }
 .animate-slideIn { animation: slideIn 0.3s ease-out both; }
@@ -56,46 +73,59 @@
 .animate-shimmer { animation: shimmer 2s linear infinite; background-size: 200% 100%; }
 .animate-slideUp { animation: slideUp 0.4s ease-out both; }
 .animate-pulseGlow { animation: pulseGlow 3s ease-in-out infinite; }
+.animate-borderGlow { animation: borderGlow 3s ease-in-out infinite; }
+.animate-listItemIn { animation: listItemIn 0.3s ease-out both; }
+.animate-countUp { animation: countUp 0.4s ease-out both; }
 
-/* Screen transition wrapper */
-.screen-enter {
-  animation: fadeIn 0.25s ease-out both;
-}
+.screen-enter { animation: fadeIn 0.25s ease-out both; }
 
-/* Custom scrollbar for panels */
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
 .thin-scrollbar::-webkit-scrollbar { width: 4px; }
 .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.thin-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
-.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-/* Glassmorphism utility */
+/* ─── Utility classes ──────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Animated gradient border for active panels */
-@keyframes borderGlow {
-  0%, 100% { border-color: #93c5fd; box-shadow: 0 0 8px rgba(59, 130, 246, 0.1); }
-  50% { border-color: #6366f1; box-shadow: 0 0 12px rgba(99, 102, 241, 0.15); }
-}
-.animate-borderGlow { animation: borderGlow 3s ease-in-out infinite; }
-
-/* Staggered list animation */
-@keyframes listItemIn {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-.animate-listItemIn { animation: listItemIn 0.3s ease-out both; }
-
-/* Number tick animation */
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-countUp { animation: countUp 0.4s ease-out both; }
-
-/* Subtle hover lift for cards */
 .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+
+/* ─── Dark card base ───────────────────────────────────────────────────────── */
+.card-dark {
+  background: #1e2433;
+  border: 1px solid #2a3144;
+  border-radius: 12px;
+}
+.card-dark:hover {
+  border-color: #3b4a63;
+}
+
+/* Grid pattern background for panels */
+.grid-pattern {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ─── Table dark theme ─────────────────────────────────────────────────────── */
+.table-dark thead { background: #161b26; }
+.table-dark thead th { color: #64748b; border-bottom: 1px solid #2a3144; }
+.table-dark tbody tr { border-bottom: 1px solid #1e2433; }
+.table-dark tbody tr:hover { background: rgba(59, 130, 246, 0.05); }
+.table-dark tbody td { color: #cbd5e1; }
+
+/* ─── Recharts overrides for dark theme ────────────────────────────────────── */
+.recharts-cartesian-grid line { stroke: #1e2433; }
+.recharts-text { fill: #64748b !important; }
+.recharts-legend-item-text { color: #94a3b8 !important; }
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #1e2433 !important;
+  border: 1px solid #2a3144 !important;
+  border-radius: 8px !important;
+}

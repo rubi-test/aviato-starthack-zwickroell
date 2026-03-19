@@ -14,7 +14,7 @@ export default function StarterPrompts({ onSelect }) {
         <button
           key={prompt}
           onClick={() => onSelect(prompt)}
-          className="text-sm px-4 py-2 rounded-full border border-gray-300 bg-white hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-gray-600 transition-colors cursor-pointer"
+          className="text-xs px-3 py-2 rounded border border-slate-700 bg-slate-800/50 hover:bg-slate-700 hover:border-blue-500/40 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer font-mono"
         >
           {prompt}
         </button>

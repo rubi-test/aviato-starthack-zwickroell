@@ -7,6 +7,7 @@ const MATERIALS = [
 
 const ACTIONS = [
   { label: "Explore Data", action: "screen:explore", icon: "chart" },
+  { label: "Graph Builder", action: "screen:graph-builder", icon: "graph" },
   { label: "Go Home", action: "screen:home", icon: "home" },
 ];
 
@@ -30,7 +31,6 @@ function fuzzyMatch(text, query) {
   const lower = text.toLowerCase();
   const q = query.toLowerCase();
   if (lower.includes(q)) return true;
-  // Simple fuzzy: all query chars appear in order
   let qi = 0;
   for (let i = 0; i < lower.length && qi < q.length; i++) {
     if (lower[i] === q[qi]) qi++;
@@ -57,7 +57,6 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
     const q = query.trim();
 
     if (!q) {
-      // Show default sections
       items.push({ type: "header", label: "Actions" });
       ACTIONS.forEach(a => items.push({ type: "action", ...a }));
       items.push({ type: "header", label: "Materials" });
@@ -74,7 +73,6 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
       return items;
     }
 
-    // Filter by query
     const matchedActions = ACTIONS.filter(a => fuzzyMatch(a.label, q));
     if (matchedActions.length) {
       items.push({ type: "header", label: "Actions" });
@@ -101,7 +99,6 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
       matchedHistory.slice(0, 5).forEach(h => items.push({ type: "query", label: h, query: h }));
     }
 
-    // Always allow free-form query
     if (q.length > 2) {
       items.push({ type: "header", label: "Ask AI" });
       items.push({ type: "query", label: q, query: q, freeform: true });
@@ -129,10 +126,7 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      onClose();
-      return;
-    }
+    if (e.key === "Escape") { onClose(); return; }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIndex(i => Math.min(i + 1, selectableItems.length - 1));
@@ -145,7 +139,6 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
     }
   };
 
-  // Scroll selected into view
   useEffect(() => {
     const el = listRef.current?.querySelector(`[data-index="${selectedIndex}"]`);
     el?.scrollIntoView({ block: "nearest" });
@@ -157,14 +150,13 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-scaleIn"
+        className="relative w-full max-w-lg bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2a3144] overflow-hidden animate-scaleIn"
         onClick={e => e.stopPropagation()}
       >
-        {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
-          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#2a3144]">
+          <svg className="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -174,22 +166,21 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search materials, queries, actions..."
-            className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
+            className="flex-1 text-sm outline-none bg-transparent text-slate-200 placeholder-slate-600 font-mono"
           />
-          <kbd className="hidden sm:inline-block text-[10px] text-gray-400 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 font-mono">
+          <kbd className="hidden sm:inline-block text-[10px] text-slate-500 bg-[#141820] border border-[#2a3144] rounded px-1.5 py-0.5 font-mono">
             ESC
           </kbd>
         </div>
 
-        {/* Results */}
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
           {results.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No results found</p>
+            <p className="text-sm text-slate-600 text-center py-8 font-mono">No results found</p>
           ) : (
             results.map((item, i) => {
               if (item.type === "header") {
                 return (
-                  <p key={`h-${i}`} className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 pt-3 pb-1">
+                  <p key={`h-${i}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 pt-3 pb-1 font-mono">
                     {item.label}
                   </p>
                 );
@@ -205,21 +196,21 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                   data-index={idx}
                   onClick={() => execute(item)}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    isSelected ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-50"
+                  className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors font-mono ${
+                    isSelected ? "bg-blue-600/20 text-blue-400" : "text-slate-300 hover:bg-[#141820]"
                   }`}
                 >
                   {item.type === "action" ? (
-                    <span className="w-5 h-5 flex items-center justify-center text-gray-400">
-                      {item.icon === "chart" ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="w-5 h-5 flex items-center justify-center text-slate-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {item.icon === "chart" ? (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        ) : item.icon === "graph" ? (
+                          <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></>
+                        ) : (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                      )}
+                        )}
+                      </svg>
                     </span>
                   ) : item.freeform ? (
                     <span className="w-5 h-5 flex items-center justify-center text-blue-400">
@@ -228,7 +219,7 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                       </svg>
                     </span>
                   ) : (
-                    <span className="w-5 h-5 flex items-center justify-center text-gray-300">
+                    <span className="w-5 h-5 flex items-center justify-center text-slate-600">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
@@ -238,7 +229,7 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                     {item.freeform ? `Ask: "${item.label}"` : item.label}
                   </span>
                   {isSelected && (
-                    <kbd className="text-[10px] text-blue-400 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 font-mono">
+                    <kbd className="text-[10px] text-blue-400 bg-blue-900/30 border border-blue-800/40 rounded px-1 py-0.5 font-mono">
                       Enter
                     </kbd>
                   )}
@@ -248,18 +239,17 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-100 px-4 py-2 flex items-center gap-4 text-[10px] text-gray-400">
+        <div className="border-t border-[#2a3144] px-4 py-2 flex items-center gap-4 text-[10px] text-slate-600 font-mono">
           <span className="flex items-center gap-1">
-            <kbd className="bg-gray-100 border border-gray-200 rounded px-1 py-0.5 font-mono">↑↓</kbd>
+            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">↑↓</kbd>
             navigate
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="bg-gray-100 border border-gray-200 rounded px-1 py-0.5 font-mono">Enter</kbd>
+            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">Enter</kbd>
             select
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="bg-gray-100 border border-gray-200 rounded px-1 py-0.5 font-mono">Esc</kbd>
+            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">Esc</kbd>
             close
           </span>
         </div>

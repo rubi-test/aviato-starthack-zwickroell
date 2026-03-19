@@ -56,28 +56,28 @@ export default function NotificationBell({ onNavigate }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 animate-scaleIn">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-700">Proactive Insights</span>
-            <span className="text-[10px] text-gray-400">{insights.length} alerts</span>
+        <div className="absolute right-0 top-full mt-2 w-80 bg-[#1e2433] rounded-xl shadow-2xl border border-[#2a3144] overflow-hidden z-50 animate-scaleIn">
+          <div className="px-4 py-2.5 border-b border-[#2a3144] flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-300 font-mono">INSIGHTS</span>
+            <span className="text-[10px] text-slate-500 font-mono">{insights.length} alerts</span>
           </div>
           <div className="max-h-72 overflow-y-auto thin-scrollbar">
             {insights.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No insights yet</p>
+              <p className="text-sm text-slate-500 text-center py-6 font-mono">No insights yet</p>
             ) : (
               insights.map((insight, i) => (
                 <button
                   key={i}
                   onClick={() => handleClick(insight)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors group"
+                  className="w-full text-left px-4 py-3 hover:bg-slate-800 border-b border-[#2a3144] transition-colors group"
                 >
                   <div className="flex items-start gap-2">
                     <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
                       insight.severity === "critical" ? "bg-red-500" : "bg-amber-500"
                     }`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{insight.title}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{insight.detail}</p>
+                      <p className="text-xs font-semibold text-slate-200 truncate">{insight.title}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{insight.detail}</p>
                     </div>
                     <svg className="w-3 h-3 text-gray-300 group-hover:text-gray-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

@@ -19,7 +19,7 @@ const PROPERTIES = [
   { key: "max_force_n", label: "Max Force", unit: "N" },
 ];
 
-const COMPARE_COLORS = { primary: "#2563eb", compare: "#f59e0b" };
+const COMPARE_COLORS = { primary: "#3b82f6", compare: "#f59e0b" };
 
 export default function ExploreScreen({ onBack }) {
   const [material, setMaterial] = useState(MATERIALS[0]);
@@ -28,7 +28,6 @@ export default function ExploreScreen({ onBack }) {
   const [loading, setLoading] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
 
-  // Comparison mode
   const [compareMaterial, setCompareMaterial] = useState(null);
   const [compareData, setCompareData] = useState(null);
   const [compareLoading, setCompareLoading] = useState(false);
@@ -44,7 +43,6 @@ export default function ExploreScreen({ onBack }) {
       .finally(() => setLoading(false));
   }, [material, property]);
 
-  // Fetch compare data
   useEffect(() => {
     if (!compareMaterial) {
       setCompareData(null);
@@ -65,11 +63,9 @@ export default function ExploreScreen({ onBack }) {
     setSelectedTest({ month, tests });
   };
 
-  // Merge primary + compare datasets for overlay chart
   const mergedTimeSeries = (() => {
     if (!data?.time_series) return [];
     if (!compareData?.time_series) return data.time_series;
-
     const map = new Map();
     for (const pt of data.time_series) {
       map.set(pt.date, { date: pt.date, mean_value: pt.mean_value, min_value: pt.min_value, max_value: pt.max_value, trend_value: pt.trend_value });
@@ -84,34 +80,32 @@ export default function ExploreScreen({ onBack }) {
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-          ← Back
+    <div className="min-h-screen bg-[#0f1117]">
+      <header className="bg-[#141820] border-b border-[#2a3144] px-6 py-3 flex items-center gap-3">
+        <button onClick={onBack} className="text-sm text-blue-400 hover:text-blue-300 font-mono font-medium">
+          ← BACK
         </button>
-        <span className="text-gray-300">|</span>
-        <span className="text-sm font-semibold text-gray-700">Data Explorer</span>
-        <span className="text-xs text-gray-400">Interactive analysis without typing</span>
+        <span className="text-[#2a3144]">|</span>
+        <span className="text-sm font-semibold text-slate-200 font-mono">DATA EXPLORER</span>
+        <span className="text-xs text-slate-500 font-mono">Interactive analysis without typing</span>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         {/* Selectors */}
         <div className="flex flex-wrap gap-4 items-end">
-          {/* Material pills */}
           <div className="flex-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-              Material
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest block mb-2 font-mono">
+              MATERIAL
             </label>
             <div className="flex flex-wrap gap-2">
               {MATERIALS.map((m) => (
                 <button
                   key={m}
                   onClick={() => { setMaterial(m); if (compareMaterial === m) setCompareMaterial(null); }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono transition-all ${
                     material === m
                       ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"
+                      : "bg-[#1e2433] border border-[#2a3144] text-slate-400 hover:border-blue-500/50 hover:text-blue-400"
                   }`}
                 >
                   {m}
@@ -119,16 +113,14 @@ export default function ExploreScreen({ onBack }) {
               ))}
             </div>
           </div>
-
-          {/* Property selector */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-              Property
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest block mb-2 font-mono">
+              PROPERTY
             </label>
             <select
               value={property}
               onChange={(e) => setProperty(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="px-3 py-2 border border-[#2a3144] rounded-lg text-sm bg-[#1e2433] text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               {PROPERTIES.map((p) => (
                 <option key={p.key} value={p.key}>{p.label} ({p.unit})</option>
@@ -140,16 +132,16 @@ export default function ExploreScreen({ onBack }) {
         {/* Comparison selector */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Compare with:</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-mono">COMPARE:</span>
             <div className="flex flex-wrap gap-1.5">
               {MATERIALS.filter(m => m !== material).map((m) => (
                 <button
                   key={m}
                   onClick={() => setCompareMaterial(compareMaterial === m ? null : m)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono transition-all ${
                     compareMaterial === m
                       ? "bg-amber-500 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600"
+                      : "bg-[#1e2433] border border-[#2a3144] text-slate-500 hover:border-amber-500/50 hover:text-amber-400"
                   }`}
                 >
                   {m}
@@ -158,8 +150,8 @@ export default function ExploreScreen({ onBack }) {
             </div>
           </div>
           {compareMaterial && (
-            <button onClick={() => setCompareMaterial(null)} className="text-xs text-gray-400 hover:text-gray-700">
-              Clear comparison
+            <button onClick={() => setCompareMaterial(null)} className="text-xs text-slate-600 hover:text-slate-400 font-mono">
+              CLEAR
             </button>
           )}
         </div>
@@ -170,9 +162,8 @@ export default function ExploreScreen({ onBack }) {
             <div className={`grid gap-3 ${compareMaterial && compareData ? "grid-cols-2" : "grid-cols-5"}`}>
               {compareMaterial && compareData ? (
                 <>
-                  {/* Side-by-side comparison stats */}
-                  <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
-                    <p className="text-xs font-semibold text-blue-600 mb-3 uppercase tracking-wide">{material}</p>
+                  <div className="card-dark p-4 border-blue-800/40">
+                    <p className="text-xs font-semibold text-blue-400 mb-3 uppercase tracking-wide font-mono">{material}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {[
                         { label: "n", value: data.stats.n },
@@ -182,14 +173,14 @@ export default function ExploreScreen({ onBack }) {
                         { label: "Max", value: `${data.stats.max}` },
                       ].map(({ label, value }) => (
                         <div key={label} className="text-center">
-                          <p className="text-[10px] text-gray-400 uppercase">{label}</p>
-                          <p className="text-sm font-bold text-gray-800 mt-0.5">{value}</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-mono">{label}</p>
+                          <p className="text-sm font-bold text-slate-200 mt-0.5 font-mono">{value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
-                    <p className="text-xs font-semibold text-amber-600 mb-3 uppercase tracking-wide">{compareMaterial}</p>
+                  <div className="card-dark p-4 border-amber-800/40">
+                    <p className="text-xs font-semibold text-amber-400 mb-3 uppercase tracking-wide font-mono">{compareMaterial}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {[
                         { label: "n", value: compareData.stats.n },
@@ -199,8 +190,8 @@ export default function ExploreScreen({ onBack }) {
                         { label: "Max", value: `${compareData.stats.max}` },
                       ].map(({ label, value }) => (
                         <div key={label} className="text-center">
-                          <p className="text-[10px] text-gray-400 uppercase">{label}</p>
-                          <p className="text-sm font-bold text-gray-800 mt-0.5">{value}</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-mono">{label}</p>
+                          <p className="text-sm font-bold text-slate-200 mt-0.5 font-mono">{value}</p>
                         </div>
                       ))}
                     </div>
@@ -209,29 +200,28 @@ export default function ExploreScreen({ onBack }) {
               ) : (
                 [
                   { label: "Tests", value: data.stats.n, color: "" },
-                  { label: "Mean", value: `${data.stats.mean} ${data.unit}`, color: "text-blue-700" },
+                  { label: "Mean", value: `${data.stats.mean} ${data.unit}`, color: "text-blue-400" },
                   { label: "Std Dev", value: `±${data.stats.std}`, color: "" },
-                  { label: "Min", value: `${data.stats.min} ${data.unit}`, color: "text-green-700" },
-                  { label: "Max", value: `${data.stats.max} ${data.unit}`, color: "text-red-700" },
+                  { label: "Min", value: `${data.stats.min} ${data.unit}`, color: "text-emerald-400" },
+                  { label: "Max", value: `${data.stats.max} ${data.unit}`, color: "text-red-400" },
                 ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm animate-scaleIn">
-                    <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
-                    <p className={`text-lg font-bold mt-1 ${color || "text-gray-800"}`}>{value}</p>
+                  <div key={label} className="card-dark p-4 text-center animate-scaleIn">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide font-mono">{label}</p>
+                    <p className={`text-lg font-bold mt-1 font-mono ${color || "text-slate-200"}`}>{value}</p>
                   </div>
                 ))
               )}
             </div>
-            {/* Delta banner when comparing */}
             {compareMaterial && compareData && (
-              <div className="mt-3 bg-gradient-to-r from-blue-50 to-amber-50 rounded-xl border border-gray-200 p-3 flex items-center justify-center gap-6 text-xs animate-fadeIn">
-                <span className="text-gray-500">Mean difference:</span>
-                <span className={`font-bold text-sm ${
-                  data.stats.mean > compareData.stats.mean ? "text-blue-700" : "text-amber-700"
+              <div className="mt-3 bg-[#1e2433] rounded-xl border border-[#2a3144] p-3 flex items-center justify-center gap-6 text-xs animate-fadeIn">
+                <span className="text-slate-500 font-mono">Mean diff:</span>
+                <span className={`font-bold text-sm font-mono ${
+                  data.stats.mean > compareData.stats.mean ? "text-blue-400" : "text-amber-400"
                 }`}>
                   {data.stats.mean > compareData.stats.mean ? "+" : ""}{(data.stats.mean - compareData.stats.mean).toFixed(2)} {data.unit}
                 </span>
-                <span className="text-gray-400">|</span>
-                <span className="text-gray-500">{material} is {
+                <span className="text-[#2a3144]">|</span>
+                <span className="text-slate-500 font-mono">{material} is {
                   data.stats.mean > compareData.stats.mean ? "higher" : "lower"
                 } by {Math.abs(((data.stats.mean - compareData.stats.mean) / compareData.stats.mean) * 100).toFixed(1)}%</span>
               </div>
@@ -240,144 +230,79 @@ export default function ExploreScreen({ onBack }) {
         )}
 
         {/* Chart */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="card-dark p-5">
           {loading || compareLoading ? (
             <div className="h-[360px] flex items-center justify-center">
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <div className="flex items-center gap-2 text-slate-500 text-sm font-mono">
                 <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                 Loading data...
               </div>
             </div>
           ) : !mergedTimeSeries.length ? (
-            <div className="h-[360px] flex items-center justify-center text-gray-400 text-sm">
+            <div className="h-[360px] flex items-center justify-center text-slate-500 text-sm font-mono">
               No data available for this combination
             </div>
           ) : (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {material}{compareMaterial ? ` vs ${compareMaterial}` : ""} — {propInfo.label} over time
+                <h3 className="text-sm font-semibold text-slate-200 font-mono">
+                  {material}{compareMaterial ? ` vs ${compareMaterial}` : ""} — {propInfo.label}
                 </h3>
                 {data?.trend && (
-                  <div className="flex gap-3 text-xs text-gray-500">
+                  <div className="flex gap-3 text-xs text-slate-500 font-mono">
                     <span>
                       Slope:{" "}
-                      <span className={`font-mono font-semibold ${
-                        data.trend.slope < -0.1 ? "text-red-600" : data.trend.slope > 0.1 ? "text-green-600" : "text-gray-600"
+                      <span className={`font-semibold ${
+                        data.trend.slope < -0.1 ? "text-red-400" : data.trend.slope > 0.1 ? "text-emerald-400" : "text-slate-400"
                       }`}>
                         {data.trend.slope > 0 ? "+" : ""}{data.trend.slope} {data.unit}/mo
                       </span>
                     </span>
-                    <span>R²: <span className="font-mono">{data.trend.r_squared}</span></span>
+                    <span>R²: <span>{data.trend.r_squared}</span></span>
                   </div>
                 )}
               </div>
               <ResponsiveContainer width="100%" height={340}>
                 <ComposedChart data={mergedTimeSeries} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} stroke="#2a3144" />
                   <YAxis
                     tickFormatter={(v) => `${v}`}
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
                     width={55}
-                    label={{ value: propInfo.unit, angle: -90, position: "insideLeft", fontSize: 11 }}
+                    stroke="#2a3144"
+                    label={{ value: propInfo.unit, angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
                   />
                   <Tooltip
                     content={({ payload, label }) => {
                       if (!payload?.length) return null;
                       return (
-                        <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs">
-                          <p className="font-semibold text-gray-700 mb-1">{label}</p>
+                        <div className="bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg px-3 py-2 text-xs">
+                          <p className="font-semibold text-slate-200 mb-1 font-mono">{label}</p>
                           {payload.filter(p => p.value != null).map((p, i) => (
-                            <p key={i} style={{ color: p.color }}>
+                            <p key={i} style={{ color: p.color }} className="font-mono">
                               {p.name}: {typeof p.value === "number" ? p.value.toFixed(2) : p.value} {propInfo.unit}
                             </p>
                           ))}
-                          <p className="text-gray-400 mt-1">Click dot to drill down</p>
+                          <p className="text-slate-600 mt-1 font-mono">Click dot to drill down</p>
                         </div>
                       );
                     }}
                   />
-                  <Legend />
-                  {/* Confidence band for primary material */}
-                  <Area
-                    type="monotone"
-                    dataKey="max_value"
-                    name="Range (max)"
-                    stroke="none"
-                    fill="#2563eb"
-                    fillOpacity={0.06}
-                    isAnimationActive={true}
-                    animationDuration={800}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="min_value"
-                    name="Range (min)"
-                    stroke="none"
-                    fill="#ffffff"
-                    fillOpacity={1}
-                    isAnimationActive={false}
-                    legendType="none"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="mean_value"
-                    name={compareMaterial ? `${material} avg` : "Monthly Avg"}
-                    stroke={COMPARE_COLORS.primary}
-                    strokeWidth={2}
-                    dot={{ r: 4, cursor: "pointer" }}
-                    activeDot={{ r: 6, onClick: (_, payload) => handleDotClick(payload.payload) }}
-                    isAnimationActive={true}
-                    animationDuration={800}
-                  />
+                  <Legend wrapperStyle={{ color: "#94a3b8" }} />
+                  <Area type="monotone" dataKey="max_value" name="Range (max)" stroke="none" fill="#3b82f6" fillOpacity={0.1} isAnimationActive={true} animationDuration={800} />
+                  <Area type="monotone" dataKey="min_value" name="Range (min)" stroke="none" fill="transparent" fillOpacity={0} isAnimationActive={false} legendType="none" />
+                  <Line type="monotone" dataKey="mean_value" name={compareMaterial ? `${material} avg` : "Monthly Avg"} stroke={COMPARE_COLORS.primary} strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} activeDot={{ r: 6, onClick: (_, payload) => handleDotClick(payload.payload) }} isAnimationActive={true} animationDuration={800} />
                   {data?.trend && (
-                    <Line
-                      type="monotone"
-                      dataKey="trend_value"
-                      name={compareMaterial ? `${material} trend` : "Trend"}
-                      stroke="#7c3aed"
-                      strokeWidth={1.5}
-                      strokeDasharray="6 3"
-                      dot={false}
-                      isAnimationActive={true}
-                      animationDuration={800}
-                    />
+                    <Line type="monotone" dataKey="trend_value" name={compareMaterial ? `${material} trend` : "Trend"} stroke="#7c3aed" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={true} animationDuration={800} />
                   )}
-                  {/* Compare material lines */}
                   {compareMaterial && (
                     <>
-                      <Line
-                        type="monotone"
-                        dataKey="compare_mean"
-                        name={`${compareMaterial} avg`}
-                        stroke={COMPARE_COLORS.compare}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        isAnimationActive={true}
-                        animationDuration={800}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="compare_trend"
-                        name={`${compareMaterial} trend`}
-                        stroke="#d97706"
-                        strokeWidth={1.5}
-                        strokeDasharray="6 3"
-                        dot={false}
-                        isAnimationActive={true}
-                        animationDuration={800}
-                      />
+                      <Line type="monotone" dataKey="compare_mean" name={`${compareMaterial} avg`} stroke={COMPARE_COLORS.compare} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={true} animationDuration={800} />
+                      <Line type="monotone" dataKey="compare_trend" name={`${compareMaterial} trend`} stroke="#d97706" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={true} animationDuration={800} />
                     </>
                   )}
-                  <Brush
-                    dataKey="date"
-                    height={24}
-                    stroke="#2563eb"
-                    fill="#f0f4ff"
-                    tickFormatter={(v) => v}
-                    travellerWidth={8}
-                  />
+                  <Brush dataKey="date" height={24} stroke="#3b82f6" fill="#141820" tickFormatter={(v) => v} travellerWidth={8} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -386,32 +311,32 @@ export default function ExploreScreen({ onBack }) {
 
         {/* Drill-down panel */}
         {selectedTest && (
-          <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-5 animate-fadeIn">
+          <div className="card-dark p-5 border-blue-800/40 animate-fadeIn">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-slate-200 font-mono">
                 Individual tests — {selectedTest.month}
               </h3>
-              <button onClick={() => setSelectedTest(null)} className="text-xs text-gray-400 hover:text-gray-700">
-                ✕ Close
+              <button onClick={() => setSelectedTest(null)} className="text-xs text-slate-600 hover:text-slate-400 font-mono">
+                CLOSE
               </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
+              <table className="w-full text-xs border-collapse table-dark">
                 <thead>
-                  <tr className="bg-blue-50">
+                  <tr className="bg-blue-950/30">
                     {["Date", "Value", "Machine", "Site", "Tester"].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-blue-700 border-b border-blue-200">{h}</th>
+                      <th key={h} className="text-left px-3 py-2 font-semibold text-blue-400 border-b border-[#2a3144] font-mono">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {selectedTest.tests.map((t, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-blue-50/30"}>
-                      <td className="px-3 py-2 border-b border-gray-100">{t.date}</td>
-                      <td className="px-3 py-2 border-b border-gray-100 font-semibold">{t.value} {data?.unit}</td>
-                      <td className="px-3 py-2 border-b border-gray-100">{t.machine}</td>
-                      <td className="px-3 py-2 border-b border-gray-100">{t.site}</td>
-                      <td className="px-3 py-2 border-b border-gray-100">{t.tester}</td>
+                    <tr key={i} className={i % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"}>
+                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.date}</td>
+                      <td className="px-3 py-2 border-b border-[#2a3144] font-semibold text-slate-200 font-mono">{t.value} {data?.unit}</td>
+                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.machine}</td>
+                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.site}</td>
+                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.tester}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -420,14 +345,11 @@ export default function ExploreScreen({ onBack }) {
           </div>
         )}
 
-        {/* Distribution + Individual scatter side by side */}
+        {/* Distribution + Individual scatter */}
         {data?.individual_tests?.length > 0 && !loading && (
           <div className="grid grid-cols-2 gap-4">
-            {/* Distribution histogram */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Value Distribution
-              </h3>
+            <div className="card-dark p-5">
+              <h3 className="text-sm font-semibold text-slate-200 mb-3 font-mono">Value Distribution</h3>
               {(() => {
                 const values = data.individual_tests.map(t => t.value);
                 const min = Math.min(...values);
@@ -447,17 +369,17 @@ export default function ExploreScreen({ onBack }) {
                   <div>
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={bins} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="range" tick={{ fontSize: 9 }} interval={0} angle={-30} textAnchor="end" height={40} />
-                        <YAxis tick={{ fontSize: 10 }} width={30} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
+                        <XAxis dataKey="range" tick={{ fontSize: 9, fill: "#64748b" }} interval={0} angle={-30} textAnchor="end" height={40} stroke="#2a3144" />
+                        <YAxis tick={{ fontSize: 10, fill: "#64748b" }} width={30} stroke="#2a3144" />
                         <Tooltip
                           content={({ payload }) => {
                             if (!payload?.length) return null;
                             const d = payload[0]?.payload;
                             return (
-                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs">
-                                <p className="font-semibold">{d.lo.toFixed(1)} - {d.hi.toFixed(1)} {data.unit}</p>
-                                <p>{d.count} tests</p>
+                              <div className="bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg px-3 py-2 text-xs font-mono">
+                                <p className="font-semibold text-slate-200">{d.lo.toFixed(1)} - {d.hi.toFixed(1)} {data.unit}</p>
+                                <p className="text-slate-400">{d.count} tests</p>
                               </div>
                             );
                           }}
@@ -466,25 +388,24 @@ export default function ExploreScreen({ onBack }) {
                           {bins.map((bin, idx) => {
                             const midpoint = (bin.lo + bin.hi) / 2;
                             const z = Math.abs((midpoint - mean) / std);
-                            const fill = z > 2 ? "#f87171" : z > 1 ? "#fbbf24" : "#60a5fa";
+                            const fill = z > 2 ? "#ef4444" : z > 1 ? "#f59e0b" : "#3b82f6";
                             return <Cell key={idx} fill={fill} />;
                           })}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                    <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-gray-400">
-                      <span>Mean: <span className="font-semibold text-gray-600">{mean.toFixed(1)}</span></span>
-                      <span>Std: <span className="font-semibold text-gray-600">{std.toFixed(2)}</span></span>
-                      <span>n: <span className="font-semibold text-gray-600">{values.length}</span></span>
+                    <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-500 font-mono">
+                      <span>Mean: <span className="font-semibold text-slate-300">{mean.toFixed(1)}</span></span>
+                      <span>Std: <span className="font-semibold text-slate-300">{std.toFixed(2)}</span></span>
+                      <span>n: <span className="font-semibold text-slate-300">{values.length}</span></span>
                     </div>
                   </div>
                 );
               })()}
             </div>
 
-            {/* Individual scatter heatmap */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            <div className="card-dark p-5">
+              <h3 className="text-sm font-semibold text-slate-200 mb-3 font-mono">
                 Individual Measurements ({data.individual_tests.length})
               </h3>
               <div className="flex flex-wrap gap-1">
@@ -492,7 +413,7 @@ export default function ExploreScreen({ onBack }) {
                   const mean = data.stats?.mean || 0;
                   const std = data.stats?.std || 1;
                   const z = Math.abs((t.value - mean) / std);
-                  const color = z > 2 ? "bg-red-400" : z > 1 ? "bg-amber-400" : "bg-blue-400";
+                  const color = z > 2 ? "bg-red-500" : z > 1 ? "bg-amber-500" : "bg-blue-500";
                   return (
                     <div
                       key={i}
@@ -502,10 +423,10 @@ export default function ExploreScreen({ onBack }) {
                   );
                 })}
               </div>
-              <div className="flex gap-4 mt-3 text-xs text-gray-400">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" /> Within 1σ</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> 1-2σ</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> &gt;2σ outlier</span>
+              <div className="flex gap-4 mt-3 text-xs text-slate-500 font-mono">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Within 1σ</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> 1-2σ</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> &gt;2σ outlier</span>
               </div>
             </div>
           </div>
