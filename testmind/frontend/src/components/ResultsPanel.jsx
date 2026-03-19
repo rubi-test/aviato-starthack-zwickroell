@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import ChartArea from "./ChartArea";
 import AuditTrail from "./AuditTrail";
 import Markdown from "./Markdown";
@@ -43,44 +43,37 @@ function exportToCSV(chartData, toolUsed) {
   URL.revokeObjectURL(url);
 }
 
-export default function ResultsPanel({ response, onFollowUp }) {
+function ResultEntry({ response, isActive, onFollowUp }) {
   const chartRef = useRef(null);
-  const scrollRef = useRef(null);
   const addToast = useToast();
-  const [pinnedResponse, setPinnedResponse] = useState(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  if (!response) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-xs">
-          <div className="relative mx-auto w-24 h-24">
-            <svg viewBox="0 0 96 96" className="w-24 h-24 animate-fadeIn">
-              <rect x="12" y="30" width="18" height="46" rx="3" fill="#1e3a5f" className="animate-fadeInUp" style={{ animationDelay: "0.1s" }} />
-              <rect x="38" y="18" width="18" height="58" rx="3" fill="#2563eb" className="animate-fadeInUp" style={{ animationDelay: "0.2s" }} />
-              <rect x="64" y="40" width="18" height="36" rx="3" fill="#1e40af" className="animate-fadeInUp" style={{ animationDelay: "0.3s" }} />
-              <line x1="8" y1="78" x2="88" y2="78" stroke="#2a3144" strokeWidth="2" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">Results will appear here</p>
-            <p className="text-xs text-slate-600 mt-1 font-mono">Ask a question on the left</p>
-          </div>
-          <div className="flex flex-col gap-1.5 text-[10px] text-slate-600 font-mono">
-            <span>Try: "Is FancyPlast 42 tensile strength declining?"</span>
-            <span>or press <kbd className="bg-slate-800 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd></span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { answer, chart_type, chart_data, steps, tool_used, tool_result, suggested_followups } = response;
+  const { answer, chart_type, chart_data, steps, tool_used, tool_result, suggested_followups, question } = response;
   const canExportCSV = chart_type === "table" || chart_type === "compliance";
   const canExportPNG = chart_type && !["table", "compliance"].includes(chart_type);
 
+  let confidenceScore = 50;
+  if (chart_data?.r_squared != null) confidenceScore += chart_data.r_squared * 30;
+  if (chart_data?.count != null) confidenceScore += Math.min(chart_data.count / 10, 20);
+  if (chart_data?.significant) confidenceScore += 15;
+  if (chart_data?.pass_rate_pct != null) confidenceScore += 5;
+  confidenceScore = Math.min(Math.round(confidenceScore), 100);
+  const confLevel = confidenceScore >= 85 ? "HIGH" : confidenceScore >= 60 ? "MED" : "LOW";
+  const confColor = confidenceScore >= 85 ? "emerald" : confidenceScore >= 60 ? "amber" : "red";
+
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto p-5 space-y-4 thin-scrollbar relative" onScroll={(e) => setShowScrollTop(e.target.scrollTop > 200)}>
+    <div
+      data-result-id={response.id}
+      className={`p-5 space-y-4 border-b border-[#1e2433] transition-all duration-300 ${
+        isActive ? "ring-1 ring-blue-500/30 bg-blue-950/5" : ""
+      }`}
+    >
+      {/* Question header */}
+      {question && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-600 font-mono uppercase tracking-widest">Q</span>
+          <p className="text-xs text-slate-500 font-mono truncate">{question}</p>
+        </div>
+      )}
+
       {/* Quick stat badges */}
       {chart_data && (
         <div className="flex flex-wrap gap-2 animate-fadeIn">
@@ -130,25 +123,15 @@ export default function ResultsPanel({ response, onFollowUp }) {
       )}
 
       {/* Confidence indicator */}
-      {chart_data && (() => {
-        let score = 50;
-        if (chart_data.r_squared != null) score += chart_data.r_squared * 30;
-        if (chart_data.count != null) score += Math.min(chart_data.count / 10, 20);
-        if (chart_data.significant) score += 15;
-        if (chart_data.pass_rate_pct != null) score += 5;
-        score = Math.min(Math.round(score), 100);
-        const level = score >= 85 ? "HIGH" : score >= 60 ? "MED" : "LOW";
-        const color = score >= 85 ? "emerald" : score >= 60 ? "amber" : "red";
-        return (
-          <div className="flex items-center gap-3 animate-fadeIn">
-            <span className={`text-[10px] font-semibold uppercase tracking-wider font-mono text-${color}-400`}>{level} CONF</span>
-            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full bg-${color}-500 transition-all duration-700`} style={{ width: `${score}%` }} />
-            </div>
-            <span className="text-[10px] text-slate-500 font-mono">{score}%</span>
+      {chart_data && (
+        <div className="flex items-center gap-3 animate-fadeIn">
+          <span className={`text-[10px] font-semibold uppercase tracking-wider font-mono text-${confColor}-400`}>{confLevel} CONF</span>
+          <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full bg-${confColor}-500 transition-all duration-700`} style={{ width: `${confidenceScore}%` }} />
           </div>
-        );
-      })()}
+          <span className="text-[10px] text-slate-500 font-mono">{confidenceScore}%</span>
+        </div>
+      )}
 
       {/* Answer */}
       <div className="card-dark p-4">
@@ -182,47 +165,6 @@ export default function ResultsPanel({ response, onFollowUp }) {
         </div>
       </div>
 
-      {/* Pin / Compare */}
-      {chart_data && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setPinnedResponse(pinnedResponse ? null : response); addToast(pinnedResponse ? "Unpinned" : "Pinned — ask another to compare", pinnedResponse ? "info" : "success"); }}
-            className={`text-[10px] px-3 py-1.5 rounded border transition-colors flex items-center gap-1.5 font-mono ${
-              pinnedResponse ? "bg-purple-900/30 border-purple-800/40 text-purple-400" : "bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500"
-            }`}
-          >
-            {pinnedResponse ? "UNPIN" : "PIN TO COMPARE"}
-          </button>
-          {pinnedResponse && pinnedResponse !== response && (
-            <span className="text-[10px] text-purple-400/60 animate-fadeIn font-mono">Comparing with pinned</span>
-          )}
-        </div>
-      )}
-
-      {/* Pinned strip */}
-      {pinnedResponse && pinnedResponse !== response && pinnedResponse.chart_data && (
-        <div className="bg-purple-950/20 border border-purple-800/30 rounded-lg p-3 animate-fadeIn">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold text-purple-400 font-mono">PINNED RESULT</span>
-            <button onClick={() => setPinnedResponse(null)} className="text-[10px] text-slate-600 hover:text-slate-400 font-mono">DISMISS</button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {pinnedResponse.chart_data.material && (
-              <div className="bg-[#1e2433] rounded-lg p-2 border border-[#2a3144]">
-                <p className="text-[10px] text-slate-500 font-mono">Material</p>
-                <p className="text-xs font-semibold text-slate-300 font-mono">{pinnedResponse.chart_data.material}</p>
-              </div>
-            )}
-            {pinnedResponse.chart_data.trend_direction && (
-              <div className="bg-[#1e2433] rounded-lg p-2 border border-[#2a3144]">
-                <p className="text-[10px] text-slate-500 font-mono">Trend</p>
-                <p className="text-xs font-semibold text-slate-300 font-mono">{pinnedResponse.chart_data.trend_direction}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Chart */}
       {chart_type && chart_data && (
         <div ref={chartRef} className="card-dark p-4 border-2 border-[#2a3144] animate-borderGlow">
@@ -249,10 +191,65 @@ export default function ResultsPanel({ response, onFollowUp }) {
       {(steps?.length > 0 || tool_result) && (
         <AuditTrail steps={steps} toolResult={tool_result} toolUsed={tool_used} />
       )}
+    </div>
+  );
+}
+
+export default function ResultsPanel({ responses, scrollTrigger, onFollowUp }) {
+  const scrollRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    if (!scrollTrigger?.id || !scrollRef.current) return;
+    const el = scrollRef.current.querySelector(`[data-result-id="${scrollTrigger.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [scrollTrigger]);
+
+  if (!responses || responses.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-xs">
+          <div className="relative mx-auto w-24 h-24">
+            <svg viewBox="0 0 96 96" className="w-24 h-24 animate-fadeIn">
+              <rect x="12" y="30" width="18" height="46" rx="3" fill="#1e3a5f" className="animate-fadeInUp" style={{ animationDelay: "0.1s" }} />
+              <rect x="38" y="18" width="18" height="58" rx="3" fill="#2563eb" className="animate-fadeInUp" style={{ animationDelay: "0.2s" }} />
+              <rect x="64" y="40" width="18" height="36" rx="3" fill="#1e40af" className="animate-fadeInUp" style={{ animationDelay: "0.3s" }} />
+              <line x1="8" y1="78" x2="88" y2="78" stroke="#2a3144" strokeWidth="2" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-400">Results will appear here</p>
+            <p className="text-xs text-slate-600 mt-1 font-mono">Ask a question on the left</p>
+          </div>
+          <div className="flex flex-col gap-1.5 text-[10px] text-slate-600 font-mono">
+            <span>Try: "Is FancyPlast 42 tensile strength declining?"</span>
+            <span>or press <kbd className="bg-slate-800 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className="h-full overflow-y-auto thin-scrollbar relative"
+      onScroll={(e) => setShowScrollTop(e.target.scrollTop > 200)}
+    >
+      {responses.map((response) => (
+        <ResultEntry
+          key={response.id}
+          response={response}
+          isActive={response.id === scrollTrigger?.id}
+          onFollowUp={onFollowUp}
+        />
+      ))}
 
       {showScrollTop && (
-        <button onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 right-6 w-10 h-10 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-500 transition-colors animate-fadeIn z-40">
+        <button
+          onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 w-10 h-10 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-500 transition-colors animate-fadeIn z-40"
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
           </svg>

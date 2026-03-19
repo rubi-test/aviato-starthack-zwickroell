@@ -34,7 +34,8 @@ export default function ChatScreen({ initialMessage, onBack }) {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState(null);
+  const [responses, setResponses] = useState([]);
+  const [scrollTrigger, setScrollTrigger] = useState({ id: null, seq: 0 });
   const [responseTime, setResponseTime] = useState(null);
   const [savedQueries, setSavedQueries] = useState(() => {
     try { return JSON.parse(localStorage.getItem("tm_saved_templates") || "[]"); }
@@ -61,14 +62,16 @@ export default function ChatScreen({ initialMessage, onBack }) {
       const result = await sendChatMessage(text, history, { default_site: "Ulm" });
       setResponseTime(((performance.now() - t0) / 1000).toFixed(1));
 
-      const assistantMsg = { role: "assistant", content: result.answer, time: new Date() };
+      const resultId = `result-${Date.now()}`;
+      const assistantMsg = { role: "assistant", content: result.answer, time: new Date(), resultId };
       setMessages((prev) => [...prev, assistantMsg]);
       setHistory((prev) => [
         ...prev,
         { role: "user", content: text },
         { role: "assistant", content: result.answer },
       ]);
-      setResponse(result);
+      setResponses((prev) => [...prev, { ...result, id: resultId, question: text }]);
+      setScrollTrigger((prev) => ({ id: resultId, seq: prev.seq + 1 }));
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong — try rephrasing your question." }]);
     } finally {
@@ -88,6 +91,7 @@ export default function ChatScreen({ initialMessage, onBack }) {
   };
 
   const contextInfo = (() => {
+    const response = responses[0];
     if (!response) return null;
     const { tool_used, chart_data } = response;
     const parts = [];
@@ -146,7 +150,7 @@ export default function ChatScreen({ initialMessage, onBack }) {
           )}
           {messages.length > 1 && (
             <button
-              onClick={() => { setMessages([]); setHistory([]); setResponse(null); setResponseTime(null); addToast("Conversation cleared", "info"); }}
+              onClick={() => { setMessages([]); setHistory([]); setResponses([]); setScrollTrigger({ id: null, seq: 0 }); setResponseTime(null); addToast("Conversation cleared", "info"); }}
               className="text-[10px] text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-700 rounded px-2 py-1 transition-colors font-mono"
               title="Clear conversation"
             >
@@ -160,10 +164,10 @@ export default function ChatScreen({ initialMessage, onBack }) {
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
         <div className="w-2/5 border-r border-[#1e2433] bg-[#0f1117] flex flex-col overflow-hidden">
-          <ChatThread messages={messages} isLoading={isLoading} onSend={handleSend} disabled={isLoading} onBookmark={handleBookmark} savedQueries={savedQueries} />
+          <ChatThread messages={messages} isLoading={isLoading} onSend={handleSend} disabled={isLoading} onBookmark={handleBookmark} savedQueries={savedQueries} onResultClick={(id) => setScrollTrigger((prev) => ({ id, seq: prev.seq + 1 }))} />
         </div>
         <div className="w-3/5 bg-[#141820] overflow-hidden">
-          <ResultsPanel response={response} onFollowUp={handleSend} />
+          <ResultsPanel responses={responses} scrollTrigger={scrollTrigger} onFollowUp={handleSend} />
         </div>
       </div>
     </div>

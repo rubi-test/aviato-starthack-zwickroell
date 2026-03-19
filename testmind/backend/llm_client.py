@@ -22,7 +22,8 @@ junior engineers understand test data from ZwickRoell machines. Always:
 - When presenting results, be specific about what you found and what it means
 - Keep answers concise but complete — a few sentences, not paragraphs
 - Format your responses using Markdown: use **bold** for key values and material names, use bullet points for lists, use ### headings to organize sections when the answer has multiple parts
-- IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")"""
+- IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")
+- When calling tools that require a 'property' parameter, you may use ANY numeric field name from the data — not just the well-known ones. Common fields are: tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n. But if the user asks about a different measurement, infer the most likely field name (snake_case) and pass it — the tool will look it up directly."""
 
 TOOL_SCHEMAS_OPENAI = [
     {
@@ -72,7 +73,7 @@ TOOL_SCHEMAS_OPENAI = [
                     "group_type": {"type": "string", "enum": ["material", "machine", "site"], "description": "What to compare by"},
                     "group_a": {"type": "string", "description": "First group name"},
                     "group_b": {"type": "string", "description": "Second group name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to compare"},
+                    "property": {"type": "string", "description": "Property field name to compare (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n — or any other numeric field in the data)"},
                     "date_from": {"type": "string", "description": "Start date filter (DD.MM.YYYY)"},
                     "date_to": {"type": "string", "description": "End date filter (DD.MM.YYYY)"},
                 },
@@ -88,7 +89,7 @@ TOOL_SCHEMAS_OPENAI = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to analyze"},
+                    "property": {"type": "string", "description": "Property field name to analyze over time (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n — or any other numeric field in the data)"},
                     "material": {"type": "string", "description": "Material name"},
                     "site": {"type": "string", "description": "Site filter"},
                     "months_back": {"type": "integer", "description": "How many months of history to analyze", "default": 12},
@@ -106,7 +107,7 @@ TOOL_SCHEMAS_OPENAI = [
                 "type": "object",
                 "properties": {
                     "material": {"type": "string", "description": "Material name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to forecast"},
+                    "property": {"type": "string", "description": "Property field name to forecast (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n — or any other numeric field in the data)"},
                     "boundary_value": {"type": "number", "description": "The boundary/limit value to check against"},
                     "months_history": {"type": "integer", "description": "Months of history to use", "default": 12},
                     "months_forecast": {"type": "integer", "description": "Months into the future to forecast", "default": 24},
@@ -123,8 +124,8 @@ TOOL_SCHEMAS_OPENAI = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "property_x": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "First property (X axis)"},
-                    "property_y": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Second property (Y axis)"},
+                    "property_x": {"type": "string", "description": "First property field name (X axis) — e.g. tensile_strength_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any other numeric field"},
+                    "property_y": {"type": "string", "description": "Second property field name (Y axis) — e.g. tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any other numeric field"},
                     "material": {"type": "string", "description": "Optional: limit to a specific material"},
                     "test_type": {"type": "string", "enum": ["tensile", "compression", "charpy"], "description": "Optional: limit to a specific test type"},
                 },
@@ -141,7 +142,7 @@ TOOL_SCHEMAS_OPENAI = [
                 "type": "object",
                 "properties": {
                     "material": {"type": "string", "description": "Material name"},
-                    "property": {"type": "string", "enum": ["tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct", "impact_energy_j", "max_force_n"], "description": "Property to check"},
+                    "property": {"type": "string", "description": "Property field name to check compliance for (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n — or any other numeric field in the data)"},
                     "threshold_value": {"type": "number", "description": "The minimum or maximum acceptable value"},
                     "direction": {"type": "string", "enum": ["above", "below"], "description": "'above' = must be >= threshold (minimum spec). 'below' = must be <= threshold (maximum spec)."},
                 },

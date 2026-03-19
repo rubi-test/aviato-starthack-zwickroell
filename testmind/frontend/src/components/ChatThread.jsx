@@ -52,7 +52,7 @@ function getAutocompleteSuggestions(input) {
   return [...new Set(suggestions)].slice(0, 5);
 }
 
-export default function ChatThread({ messages, isLoading, onSend, disabled, onBookmark, savedQueries = [] }) {
+export default function ChatThread({ messages, isLoading, onSend, disabled, onBookmark, savedQueries = [], onResultClick }) {
   const [input, setInput] = useState("");
   const [activeStep, setActiveStep] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
@@ -119,7 +119,14 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                 {msg.role === "assistant" ? (
                   <div>
                     <p>{summarize(msg.content)}</p>
-                    <p className="text-xs text-blue-400/60 mt-1.5 font-mono">See results panel →</p>
+                    {msg.resultId && onResultClick && (
+                      <button
+                        onClick={() => onResultClick(msg.resultId)}
+                        className="text-xs text-blue-400/60 hover:text-blue-300 mt-1.5 font-mono transition-colors text-left"
+                      >
+                        See results panel →
+                      </button>
+                    )}
                   </div>
                 ) : msg.content}
               </div>
