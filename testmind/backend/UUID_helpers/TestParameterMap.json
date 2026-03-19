@@ -1,0 +1,390 @@
+[
+  {
+    "_id": "{DDC875FE-A178-4768-9ADD-E3CB0BBAAC6D}",
+    "en": "STANDARD"
+  },
+  {
+    "_id": "{1E1B7093-4D46-4d87-8EE4-BB53534FD3AE}",
+    "en": "CUSTOMER"
+  },
+  {
+    "_id": "{5F8F743A-26A3-4248-A17C-531F1A0023BE}",
+    "en": "MATERIAL"
+  },
+  {
+    "_id": "{9E9AE153-48EC-433a-83CB-55E0D51A4F05}",
+    "en": "SPECIMEN_REMOVAL"
+  },
+  {
+    "_id": "{84A68805-ABFD-4709-A761-96BD70D2F489}",
+    "en": "PRE_TREATMENT"
+  },
+  {
+    "_id": "{89FD6BBA-387F-4a99-889E-65150BBFF880}",
+    "en": "TYPE_AND_DESTINATION"
+  },
+  {
+    "_id": "{8FC1D803-5D84-4167-9468-B7F5FF1D3CC0}",
+    "en": "NOTES"
+  },
+  {
+    "_id": "{BDA8401C-705B-4f22-A8D3-F4171CF2310F}",
+    "en": "TESTER"
+  },
+  {
+    "_id": "{58DE2E80-65C5-4c42-9750-E09297712E62}",
+    "en": "MACHINE_DATA"
+  },
+  {
+    "_id": "{213B5382-CAA3-4e50-9037-DFD4D3F5B042}",
+    "en": "JOB_NO"
+  },
+  {
+    "_id": "{01CA8921-7571-44fd-8C18-320E674CA3EA}",
+    "en": "SPECIMEN_THICKNESS"
+  },
+  {
+    "_id": "{A72916AE-4723-4d1d-B09B-DBF2F68F8C78}",
+    "en": "SPECIMEN_WIDTH"
+  },
+  {
+    "_id": "{7FF474B8-34B1-4295-82B0-2D088F984FB0}",
+    "en": "SPECIMEN_TYPE"
+  },
+  {
+    "_id": "{A377CCFA-6CD8-45b7-B90B-EC5F9E6DB4BE}",
+    "en": "TYPE_OF_TESTING"
+  },
+  {
+    "_id": "Zwick.Parameter.Zpf.Terminology.TypeOfTesting",
+    "en": "TYPE_OF_TESTING_STR"
+  },
+  {
+    "_id": "{357F1158-1FF9-4823-BB37-47A41DA1EF23}",
+    "en": "TYPE_OF_TEST"
+  },
+  {
+    "_id": "{04DC05F9-4496-47da-B819-7A6AC7FA20D2}",
+    "en": "TEST_SPEED"
+  },
+  {
+    "_id": "{79ACBC8B-6869-464d-9432-96B98C25C75A}",
+    "en": "MATERIAL_P"
+  },
+  {
+    "_id": "{97BC3235-7FA0-4a78-BEB1-1C9A2416C364}",
+    "en": "FINDINGS"
+  },
+  {
+    "_id": "{ED0EECCF-C220-4456-BFE8-0EAA369C6BA5}",
+    "en": "COMMENT"
+  },
+  {
+    "_id": "{E4D97DE6-7009-45c4-9784-260FCC0B9D44}",
+    "en": "NOTE"
+  },
+  {
+    "_id": "Zwick.Parameter.Zpf.Terminology.MachineType",
+    "en": "MACHINE_TYPE_STR"
+  },
+  {
+    "_id": "{D5B16631-5279-48c9-8242-3E03B3003209}",
+    "en": "TYPE"
+  },
+  {
+    "_id": "{B5AD3545-C97A-42c2-A9C4-B6168E3708CA}",
+    "en": "Begin of Young's modulus determination"
+  },
+  {
+    "_id": "{1E61B8B6-D3D3-4687-84A8-3F34538E62F6}",
+    "en": "Gage length, fine strain"
+  },
+  {
+    "_id": "{D928D89C-6284-4c33-A59E-69704DFD03D7}",
+    "en": "End of Young's modulus determination"
+  },
+  {
+    "_id": "{1D66BCCB-DB00-4285-BABC-8F0D8155194C}",
+    "en": "Type of Young's modulus determination"
+  },
+  {
+    "_id": "{A6F7BFC0-9763-430a-A31E-E91671A9304B}",
+    "en": "Speed, Young's modulus"
+  },
+  {
+    "_id": "{1E58B8B0-4651-4bc0-AE6B-C076AB01C6D3}",
+    "en": "Speed, yield point"
+  },
+  {
+    "_id": "{0797532D-7699-4bfc-B51F-11E0A8E47EB5}",
+    "en": "Force shutdown threshold"
+  },
+  {
+    "_id": "{C307FDBA-3B87-44b0-AD25-71149903DC63}",
+    "en": "Upper force limit"
+  },
+  {
+    "_id": "{60E1DEAC-DD07-413e-AD1E-D7CD7D4A3A78}",
+    "en": "Maximum extension"
+  },
+  {
+    "_id": "{2932DA76-1C24-4d7d-A274-444A9781E90F}",
+    "en": "Max. permissible force at end of test"
+  },
+  {
+    "_id": "{4556FEF5-B228-42fa-80AC-AA831BBF0409}",
+    "en": "Speed, point of load removal"
+  },
+  {
+    "_id": "{8C49BC3C-7365-4ecd-8252-A50843182BE9}",
+    "en": "Mid span"
+  },
+  {
+    "_id": "{B26568C0-D71E-4245-9797-F9E1A9133AEB}",
+    "en": "Length of the reference beam"
+  },
+  {
+    "_id": "{8E11E826-74C7-4d83-91E3-9590D1AFBB13}",
+    "en": "Diameter"
+  },
+  {
+    "_id": "{95AFC5EE-B452-421b-A142-98A89ADA99C1}",
+    "en": "Cross-section input"
+  },
+  {
+    "_id": "{6D7446C7-25BA-468f-85C2-270E39D31D74}",
+    "en": "Outer diameter"
+  },
+  {
+    "_id": "{A9BB7CAF-5669-4239-9289-BB9F8D1A1C33}",
+    "en": "Inner diameter"
+  },
+  {
+    "_id": "{4089D65D-171F-4724-BCAC-D6FC1E22396E}",
+    "en": "Density of the specimen material"
+  },
+  {
+    "_id": "{AC622373-3CB0-4f5e-B3B6-F852AFCB68F3}",
+    "en": "Mass per unit area of the specimen"
+  },
+  {
+    "_id": "{D7560B7D-200B-4fd8-A3DC-131E93D40BB8}",
+    "en": "Weight of the specimen"
+  },
+  {
+    "_id": "{761E4525-9070-4df7-A20D-D421F7953DBE}",
+    "en": "Total length of the specimen"
+  },
+  {
+    "_id": "{D8A18A00-AC93-434a-82E4-3B76F946F8FC}",
+    "en": "Young's modulus preset"
+  },
+  {
+    "_id": "{4F2DF100-39A0-4a7d-8E3F-CF48E156B34B}",
+    "en": "Cross-section after break"
+  },
+  {
+    "_id": "{6DC8C5B8-75B6-40a6-A21F-A0965B3EB82A}",
+    "en": "Cross-section correction factor"
+  },
+  {
+    "_id": "{E6149CF5-CD5B-47a2-A3A1-A7472062BBFB}",
+    "en": "Negative cross-section correction value"
+  },
+  {
+    "_id": "{F5BDF2B3-629A-47fb-86D1-CF92965833DF}",
+    "en": "Diameter 1 after break"
+  },
+  {
+    "_id": "{5AC31B5E-22CC-468a-AEAF-F94FC52EF04C}",
+    "en": "Diameter 2 after break"
+  },
+  {
+    "_id": "{8EF651F6-52C3-4fea-9559-D723656C6E12}",
+    "en": "Travel preset x1%"
+  },
+  {
+    "_id": "{7FBE2CD6-2838-4d32-8510-00CF1962CE69}",
+    "en": "Travel preset x2%"
+  },
+  {
+    "_id": "{988A9A3D-792D-43d3-A17B-D45D3BA5A7BA}",
+    "en": "Bar length"
+  },
+  {
+    "_id": "{7B9E9F5F-EC8C-4483-A068-1A229B05CCFC}",
+    "en": "Date"
+  },
+  {
+    "_id": "{6D08BDA8-C611-4e62-9575-FD7088D43AC4}",
+    "en": "Clock time"
+  },
+  {
+    "_id": "{6673EA05-69E1-4ee1-9CA0-63B3EBC657E1}",
+    "en": "Designation of the sub-series"
+  },
+  {
+    "_id": "{5D198852-6E3C-48c1-8A96-8FE1C1FDCD38}",
+    "en": "Tube definition"
+  },
+  {
+    "_id": "{485323FC-D5F8-4ad2-837C-059709F97C04}",
+    "en": "Wall thickness"
+  },
+  {
+    "_id": "{A37B8295-AC64-4db8-81FF-272A2A1F68B7}",
+    "en": "Travel preset x3%"
+  },
+  {
+    "_id": "{C1873440-EF93-4924-8215-FA78422517BC}",
+    "en": "Travel preset x4%"
+  },
+  {
+    "_id": "{8AA6D702-DD91-4378-A607-894F74306385}",
+    "en": "Travel preset x5%"
+  },
+  {
+    "_id": "{81786473-CB88-4257-A9D3-1B042AF2FC60}",
+    "en": "Travel preset x6%"
+  },
+  {
+    "_id": "{50323D8D-B115-46a1-8014-16AEFB9D601F}",
+    "en": "Headline for the report"
+  },
+  {
+    "_id": "{72BD79F9-9B35-4c7b-BA57-DFC51DCAFF40}",
+    "en": "Marked initial gage length"
+  },
+  {
+    "_id": "{97DDE721-93AA-478c-8A21-A04E3C8EB1F8}",
+    "en": "Gage length after break"
+  },
+  {
+    "_id": "{4C9D907B-E92D-4c0a-A2F8-C8CF54D58A0F}",
+    "en": "Specimen thickness after break"
+  },
+  {
+    "_id": "{D775E48E-46FD-4fed-8D38-674E9E43EEF0}",
+    "en": "Specimen width after break"
+  },
+  {
+    "_id": "{66C580CB-F7A6-4f67-8F59-4B271FC4ADB1}",
+    "en": "Specimen ID"
+  },
+  {
+    "_id": "{463B336A-9F2F-4f86-8379-C4F756612CF5}",
+    "en": "Part no."
+  },
+  {
+    "_id": "{DEA63CE9-77DA-49ff-A978-026967881E56}",
+    "en": "Removal"
+  },
+  {
+    "_id": "{B58CC96C-D59E-420a-9723-C730712D8010}",
+    "en": "Diameter of the rollers"
+  },
+  {
+    "_id": "{DDB710C3-6895-4835-B723-B48276BB19F4}",
+    "en": "Cross-section of the rings"
+  },
+  {
+    "_id": "{7E3FF709-09BA-4a80-AD85-F44CD3B0A594}",
+    "en": "Inner circumference"
+  },
+  {
+    "_id": "{97233EE6-3471-427e-9046-7C2BD7893CA3}",
+    "en": "Optical assessment"
+  },
+  {
+    "_id": "{6BAE3B81-AAA6-4521-AA24-2514E70F6D0C}",
+    "en": "Details about break"
+  },
+  {
+    "_id": "{53A71B7E-DCB4-4fb0-9295-0659A7F0EB85}",
+    "en": "Tube length"
+  },
+  {
+    "_id": "{24EC45C7-A571-4f06-BFF0-CEDAE85147A5}",
+    "en": "Supply description"
+  },
+  {
+    "_id": "{92F692B2-2639-4f3f-82D2-FA6A867D2E9F}",
+    "en": "Grip to grip separation at the start position"
+  },
+  {
+    "_id": "{B3F12AE2-8204-4546-B29B-C5A0E4A7A4B0}",
+    "en": "Factor for strain conversion"
+  },
+  {
+    "_id": "{6C5BA68F-9A9F-46e2-98E1-DC772DA3B710}",
+    "en": "Stress conversion factor"
+  },
+  {
+    "_id": "{E14300B0-C100-4a20-AF30-FDA5C7A72045}",
+    "en": "Fineness"
+  },
+  {
+    "_id": "{7A6EB131-18CE-4494-B2CA-401F2F974652}",
+    "en": "Parallel specimen length"
+  },
+  {
+    "_id": "{2FFCC8E5-3316-4e84-9E51-E194B22DB31D}",
+    "en": "Terminology - Industry"
+  },
+  {
+    "_id": "{A705E8FB-7ED5-4cd2-9165-95B8663FB789}",
+    "en": "Terminology - Type of testing"
+  },
+  {
+    "_id": "{01D999ED-BF60-499d-8A68-9A74D168167F}",
+    "en": "Date/Clock time"
+  },
+  {
+    "_id": "{4AD02FFA-5E1E-4113-8EE3-1DB547C43856}",
+    "en": "Series designation"
+  },
+  {
+    "_id": "{1ED7FE5D-2A95-4d00-95C9-D1AE8E9E8D6B}",
+    "en": "Designation sub-series 1"
+  },
+  {
+    "_id": "{E6727698-FB2A-4191-BF48-A49C3A2AEBF6}",
+    "en": "Designation sub-series 2"
+  },
+  {
+    "_id": "{964DFBFB-0471-4dd6-8F26-7E7F2982FEA5}",
+    "en": "Designation sub-series 3"
+  },
+  {
+    "_id": "{02A923DB-E74E-4968-933C-2AE156FC9A5B}",
+    "en": "Designation sub-series 4"
+  },
+  {
+    "_id": "{230C41E5-10B5-474b-9F79-2ED114779D21}",
+    "en": "Specimen designation"
+  },
+  {
+    "_id": "{38A98A1D-8ED6-4141-87A1-AB2C013E7664}",
+    "en": "APPLICATION_ENGINEER"
+  },
+  {
+    "_id": "{6E99D1F5-AC66-49f4-8CD4-76F8CD03369E}",
+    "en": "CUSTOMER_NAME"
+  },
+  {
+    "_id": "{C5BF38A0-0EDD-40eb-AB92-2AB30547BD9E}",
+    "en": "GRIPS"
+  },
+  {
+    "_id": "{E8A33C8F-8F33-416c-A264-3F79626E1400}",
+    "en": "JAWS"
+  },
+  {
+    "_id": "{C9DA573B-25AE-4e7c-A502-D2C1900A7707}",
+    "en": "GRIPS_SPECIFICATION"
+  },
+  {
+    "_id": "{FD3AD540-505C-4475-9AC9-BCA56D5E02FB}",
+    "en": "LOAD_CELL"
+  }
+]

@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Base dark theme ──────────────────────────────────────────────────────── */
+/* ─── Base light theme ─────────────────────────────────────────────────────── */
 body {
-  background: #0f1117;
-  color: #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
   font-feature-settings: "tnum"; /* tabular numbers everywhere */
 }
 
@@ -44,11 +44,11 @@ body {
 }
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-  50% { box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.15); }
+  50% { box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.1); }
 }
 @keyframes borderGlow {
-  0%, 100% { border-color: #334155; box-shadow: 0 0 8px rgba(59, 130, 246, 0.08); }
-  50% { border-color: #475569; box-shadow: 0 0 14px rgba(99, 102, 241, 0.12); }
+  0%, 100% { border-color: #e2e8f0; box-shadow: 0 0 8px rgba(59, 130, 246, 0.05); }
+  50% { border-color: #cbd5e1; box-shadow: 0 0 14px rgba(99, 102, 241, 0.08); }
 }
 @keyframes listItemIn {
   from { opacity: 0; transform: translateX(-8px); }
@@ -82,50 +82,52 @@ body {
 /* ─── Scrollbar ────────────────────────────────────────────────────────────── */
 .thin-scrollbar::-webkit-scrollbar { width: 4px; }
 .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.thin-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 /* ─── Utility classes ──────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
 
-/* ─── Dark card base ───────────────────────────────────────────────────────── */
+/* ─── Light card base ──────────────────────────────────────────────────────── */
 .card-dark {
-  background: #1e2433;
-  border: 1px solid #2a3144;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .card-dark:hover {
-  border-color: #3b4a63;
+  border-color: #cbd5e1;
 }
 
 /* Grid pattern background for panels */
 .grid-pattern {
   background-image:
-    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-/* ─── Table dark theme ─────────────────────────────────────────────────────── */
-.table-dark thead { background: #161b26; }
-.table-dark thead th { color: #64748b; border-bottom: 1px solid #2a3144; }
-.table-dark tbody tr { border-bottom: 1px solid #1e2433; }
-.table-dark tbody tr:hover { background: rgba(59, 130, 246, 0.05); }
-.table-dark tbody td { color: #cbd5e1; }
+/* ─── Table light theme ───────────────────────────────────────────────────── */
+.table-dark thead { background: #f1f5f9; }
+.table-dark thead th { color: #64748b; border-bottom: 1px solid #e2e8f0; }
+.table-dark tbody tr { border-bottom: 1px solid #f1f5f9; }
+.table-dark tbody tr:hover { background: rgba(59, 130, 246, 0.04); }
+.table-dark tbody td { color: #334155; }
 
-/* ─── Recharts overrides for dark theme ────────────────────────────────────── */
-.recharts-cartesian-grid line { stroke: #1e2433; }
+/* ─── Recharts overrides for light theme ──────────────────────────────────── */
+.recharts-cartesian-grid line { stroke: #e2e8f0; }
 .recharts-text { fill: #64748b !important; }
-.recharts-legend-item-text { color: #94a3b8 !important; }
+.recharts-legend-item-text { color: #475569 !important; }
 .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: #1e2433 !important;
-  border: 1px solid #2a3144 !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
 }

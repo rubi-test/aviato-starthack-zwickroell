@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const MATERIALS = [
-  "FancyPlast 42", "UltraPlast 99", "Hostacomp G2",
-  "Stardust", "FancyPlast 84", "NovaTex 10",
+  "Steel", "FEP", "Spur+ 1015",
+  "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
 ];
 
 const ACTIONS = [
@@ -12,14 +12,14 @@ const ACTIONS = [
 ];
 
 const SAMPLE_QUERIES = [
-  "Summarize all properties for FancyPlast 42",
-  "Is Hostacomp G2 tensile strength degrading?",
-  "Compare Z05 and Z20 machine results",
-  "Will FancyPlast 42 tensile modulus violate 10 MPa?",
-  "Show all Charpy tests by MasterOfDesaster",
+  "Summarize all properties for Steel",
+  "Show all tensile tests",
+  "Compare Steel and FEP max force",
+  "What standards are used in our tests?",
+  "Show compression test results",
   "Correlate tensile strength and elongation",
-  "Check compliance: tensile strength above 40 MPa",
-  "Show all tests for customer Megaplant",
+  "List all materials in the database",
+  "Show test distribution by test type",
 ];
 
 function getHistory() {
@@ -150,12 +150,12 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2a3144] overflow-hidden animate-scaleIn"
+        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#2a3144]">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
           <svg className="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -166,16 +166,16 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search materials, queries, actions..."
-            className="flex-1 text-sm outline-none bg-transparent text-slate-200 placeholder-slate-600 font-mono"
+            className="flex-1 text-sm outline-none bg-transparent text-slate-800 placeholder-slate-400 font-mono"
           />
-          <kbd className="hidden sm:inline-block text-[10px] text-slate-500 bg-[#141820] border border-[#2a3144] rounded px-1.5 py-0.5 font-mono">
+          <kbd className="hidden sm:inline-block text-[10px] text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 font-mono">
             ESC
           </kbd>
         </div>
 
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
           {results.length === 0 ? (
-            <p className="text-sm text-slate-600 text-center py-8 font-mono">No results found</p>
+            <p className="text-sm text-slate-400 text-center py-8 font-mono">No results found</p>
           ) : (
             results.map((item, i) => {
               if (item.type === "header") {
@@ -197,7 +197,7 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                   onClick={() => execute(item)}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors font-mono ${
-                    isSelected ? "bg-blue-600/20 text-blue-400" : "text-slate-300 hover:bg-[#141820]"
+                    isSelected ? "bg-blue-600/10 text-blue-600" : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   {item.type === "action" ? (
@@ -213,13 +213,13 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                       </svg>
                     </span>
                   ) : item.freeform ? (
-                    <span className="w-5 h-5 flex items-center justify-center text-blue-400">
+                    <span className="w-5 h-5 flex items-center justify-center text-blue-600">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     </span>
                   ) : (
-                    <span className="w-5 h-5 flex items-center justify-center text-slate-600">
+                    <span className="w-5 h-5 flex items-center justify-center text-slate-400">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
@@ -229,7 +229,7 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
                     {item.freeform ? `Ask: "${item.label}"` : item.label}
                   </span>
                   {isSelected && (
-                    <kbd className="text-[10px] text-blue-400 bg-blue-900/30 border border-blue-800/40 rounded px-1 py-0.5 font-mono">
+                    <kbd className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 font-mono">
                       Enter
                     </kbd>
                   )}
@@ -239,17 +239,17 @@ export default function CommandPalette({ onNavigate, onScreenChange, open, onClo
           )}
         </div>
 
-        <div className="border-t border-[#2a3144] px-4 py-2 flex items-center gap-4 text-[10px] text-slate-600 font-mono">
+        <div className="border-t border-slate-200 px-4 py-2 flex items-center gap-4 text-[10px] text-slate-400 font-mono">
           <span className="flex items-center gap-1">
-            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">↑↓</kbd>
+            <kbd className="bg-slate-50 border border-slate-200 rounded px-1 py-0.5">↑↓</kbd>
             navigate
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">Enter</kbd>
+            <kbd className="bg-slate-50 border border-slate-200 rounded px-1 py-0.5">Enter</kbd>
             select
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="bg-[#141820] border border-[#2a3144] rounded px-1 py-0.5">Esc</kbd>
+            <kbd className="bg-slate-50 border border-slate-200 rounded px-1 py-0.5">Esc</kbd>
             close
           </span>
         </div>

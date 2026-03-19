@@ -2,13 +2,21 @@
 
 import numpy as np
 from scipy import stats as sp_stats
-from db import get_collection
-from tools.utils import extract_property_values, filter_by_date_range, fuzzy_match_name, infer_test_type_filter
+from data_access import get_tests_with_results, get_distinct_values, get_stats_aggregation
+from tools.utils import (
+    extract_property_values,
+    filter_by_date_range,
+    fuzzy_match_name,
+    infer_test_type_filter,
+    build_date_filter,
+)
+from db import is_mock
 
 GROUP_FIELD_MAP = {
     "material": "TestParametersFlat.MATERIAL",
     "machine": "TestParametersFlat.MACHINE",
     "site": "TestParametersFlat.SITE",
+    "standard": "TestParametersFlat.STANDARD",
 }
 
 
@@ -25,26 +33,28 @@ def compare_groups(
     if not field:
         return {
             "result": {"error": f"Unknown group_type: {group_type}"},
-            "steps": [f"Invalid group_type '{group_type}'. Must be material, machine, or site."],
+            "steps": [f"Invalid group_type '{group_type}'. Must be material, machine, site, or standard."],
         }
 
-    tests_col = get_collection("Tests")
     type_filter = infer_test_type_filter(property)
 
-    # Fuzzy match for material/site comparisons
-    if group_type == "material":
-        known = tests_col.distinct("TestParametersFlat.MATERIAL")
-        group_a = fuzzy_match_name(group_a, known)
-        group_b = fuzzy_match_name(group_b, known)
-    elif group_type == "site":
-        known = tests_col.distinct("TestParametersFlat.SITE")
+    # Fuzzy match for material/site/standard comparisons
+    if group_type in ("material", "site", "standard"):
+        known = get_distinct_values(field)
         group_a = fuzzy_match_name(group_a, known)
         group_b = fuzzy_match_name(group_b, known)
 
-    docs_a = list(tests_col.find({field: group_a, **type_filter}))
-    docs_b = list(tests_col.find({field: group_b, **type_filter}))
+    date_filter = build_date_filter(date_from=date_from, date_to=date_to)
 
-    if date_from or date_to:
+    query_a = {field: group_a, **type_filter, **date_filter}
+    query_b = {field: group_b, **type_filter, **date_filter}
+
+    # Fetch bounded results for t-test
+    docs_a = get_tests_with_results(query_a, properties=[property], limit=10000)
+    docs_b = get_tests_with_results(query_b, properties=[property], limit=10000)
+
+    # For mock data with string dates, apply Python-side date filter
+    if is_mock() and (date_from or date_to):
         docs_a = filter_by_date_range(docs_a, date_from, date_to)
         docs_b = filter_by_date_range(docs_b, date_from, date_to)
 
@@ -88,7 +98,7 @@ def compare_groups(
     steps = [
         f"Queried all tests for {group_type}={group_a} (n={len(vals_a)}) and {group_type}={group_b} (n={len(vals_b)})",
         f"Extracted {property} values for both groups",
-        f"Ran two-sample t-test using scipy.stats.ttest_ind",
+        "Ran two-sample t-test using scipy.stats.ttest_ind",
         f"p-value={p_value:.4f} — {'below' if significant else 'above'} alpha threshold of {alpha} → {'statistically significant' if significant else 'not significant'}",
     ]
 

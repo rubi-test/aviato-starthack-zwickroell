@@ -18,19 +18,19 @@ const ANALYSIS_STEPS = [
 ];
 
 const AUTOCOMPLETE_SUGGESTIONS = [
-  "Is {material} tensile strength declining?",
   "Summarize all properties for {material}",
-  "Compare Z05 and Z20 machine results",
-  "Will {material} tensile modulus violate 10 MPa?",
-  "Show all tests for customer Megaplant",
-  "Correlate tensile strength and elongation for {material}",
-  "Check compliance: tensile strength above 40 MPa for {material}",
-  "Show Charpy tests by MasterOfDesaster",
-  "What is the trend for {material} elongation at break?",
-  "Compare Ulm and Kennesaw site results",
+  "Show all tensile tests for {material}",
+  "Compare Steel and FEP max force",
+  "What standards are used in our tests?",
+  "Show compression test results for {material}",
+  "Correlate max force and tensile modulus for {material}",
+  "What is the trend for {material} max force?",
+  "List all materials in the database",
+  "Show test distribution by test type",
+  "Show recent test results",
 ];
 
-const MATERIALS = ["FancyPlast 42", "UltraPlast 99", "Hostacomp G2", "Stardust", "FancyPlast 84", "NovaTex 10"];
+const MATERIALS = ["Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL"];
 
 function getAutocompleteSuggestions(input) {
   if (!input || input.length < 2) return [];
@@ -102,7 +102,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-3 thin-scrollbar">
         {messages.length === 0 && (
-          <p className="text-xs text-slate-600 text-center pt-8 font-mono">
+          <p className="text-xs text-slate-400 text-center pt-8 font-mono">
             Ask a question to get started
           </p>
         )}
@@ -113,7 +113,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                 className={`w-full px-4 py-2.5 rounded-lg text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-br-sm"
-                    : "bg-[#1e2433] border border-[#2a3144] text-slate-300 rounded-bl-sm"
+                    : "bg-white border border-slate-200 text-slate-700 rounded-bl-sm"
                 }`}
               >
                 {msg.role === "assistant" ? (
@@ -122,7 +122,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                     {msg.resultId && onResultClick && (
                       <button
                         onClick={() => onResultClick(msg.resultId)}
-                        className="text-xs text-blue-400/60 hover:text-blue-300 mt-1.5 font-mono transition-colors text-left"
+                        className="text-xs text-blue-400/60 hover:text-blue-600 mt-1.5 font-mono transition-colors text-left"
                       >
                         See results panel →
                       </button>
@@ -131,7 +131,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                 ) : msg.content}
               </div>
               {msg.time && (
-                <span className="text-[10px] text-slate-600 font-mono px-1">
+                <span className="text-[10px] text-slate-400 font-mono px-1">
                   {msg.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
@@ -139,7 +139,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                 <button
                   onClick={() => onBookmark(msg.content)}
                   className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2 py-0.5 rounded font-mono ${
-                    savedQueries.includes(msg.content) ? "text-blue-400" : "text-slate-600 hover:text-slate-400"
+                    savedQueries.includes(msg.content) ? "text-blue-600" : "text-slate-400 hover:text-slate-500"
                   }`}
                   title={savedQueries.includes(msg.content) ? "Bookmarked" : "Bookmark"}
                 >
@@ -154,7 +154,7 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
         ))}
         {isLoading && (
           <div className="flex justify-start animate-fadeIn">
-            <div className="bg-[#1e2433] border border-[#2a3144] px-4 py-3 rounded-lg rounded-bl-sm text-sm w-64">
+            <div className="bg-white border border-slate-200 px-4 py-3 rounded-lg rounded-bl-sm text-sm w-64">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] text-slate-500 font-mono">{elapsed.toFixed(1)}s</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -169,9 +169,9 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                     ) : i === activeStep ? (
                       <span className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
                     ) : (
-                      <span className="w-3.5 h-3.5 rounded-full bg-slate-700 flex-shrink-0" />
+                      <span className="w-3.5 h-3.5 rounded-full bg-slate-200 flex-shrink-0" />
                     )}
-                    <span className={`text-xs font-mono ${i < activeStep ? "text-slate-500" : i === activeStep ? "text-blue-400" : "text-slate-600"}`}>
+                    <span className={`text-xs font-mono ${i < activeStep ? "text-slate-500" : i === activeStep ? "text-blue-600" : "text-slate-400"}`}>
                       {step}
                     </span>
                   </div>
@@ -184,25 +184,25 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
       </div>
 
       {/* Input bar */}
-      <div className="p-3 border-t border-[#1e2433] bg-[#141820] relative">
+      <div className="p-3 border-t border-slate-200 bg-white relative">
         {suggestions.length > 0 && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg overflow-hidden z-20 animate-fadeIn">
+          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-20 animate-fadeIn">
             {suggestions.map((s, i) => (
               <button
                 key={s}
                 onClick={() => handleSend(s)}
                 onMouseEnter={() => setSelectedSuggestion(i)}
                 className={`w-full text-left px-4 py-2 text-sm font-mono transition-colors ${
-                  i === selectedSuggestion ? "bg-blue-900/30 text-blue-300" : "text-slate-400 hover:bg-slate-800"
+                  i === selectedSuggestion ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100"
                 }`}
               >
                 {s}
               </button>
             ))}
-            <div className="px-4 py-1.5 bg-[#161b26] border-t border-[#2a3144] flex gap-3 text-[10px] text-slate-600 font-mono">
-              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">↑↓</kbd> nav</span>
-              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">Tab</kbd> fill</span>
-              <span><kbd className="bg-slate-800 border border-slate-700 rounded px-1">Enter</kbd> send</span>
+            <div className="px-4 py-1.5 bg-slate-50 border-t border-slate-200 flex gap-3 text-[10px] text-slate-400 font-mono">
+              <span><kbd className="bg-slate-100 border border-slate-200 rounded px-1">↑↓</kbd> nav</span>
+              <span><kbd className="bg-slate-100 border border-slate-200 rounded px-1">Tab</kbd> fill</span>
+              <span><kbd className="bg-slate-100 border border-slate-200 rounded px-1">Enter</kbd> send</span>
             </div>
           </div>
         )}
@@ -214,12 +214,12 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
             onKeyDown={handleKeyDown}
             placeholder="Ask a follow-up question…"
             disabled={disabled || isLoading}
-            className="flex-1 px-4 py-2.5 border border-slate-700 rounded-lg text-sm bg-[#1e2433] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-900 disabled:text-slate-600 transition-colors font-mono"
+            className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400 transition-colors font-mono"
           />
           <button
             onClick={() => handleSend()}
             disabled={disabled || isLoading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-mono hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-mono hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
           >
             SEND
           </button>

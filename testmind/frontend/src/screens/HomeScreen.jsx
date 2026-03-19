@@ -45,32 +45,32 @@ export default function HomeScreen({ onNavigateToChat }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1117] grid-pattern">
+    <div className="min-h-screen bg-slate-50 grid-pattern">
       {/* Header */}
-      <header className="bg-[#141820] border-b border-[#1e2433] px-8 py-4 flex justify-between items-center">
+      <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center">
         <div className="flex items-baseline gap-3">
-          <span className="text-xl font-bold text-white tracking-tight font-mono">TestMind</span>
+          <span className="text-xl font-bold text-slate-900 tracking-tight font-mono">TestMind</span>
           <span className="text-slate-500 text-sm font-mono">/ ZwickRoell</span>
-          <span className="text-[10px] text-slate-600 font-mono ml-2 bg-slate-800 px-2 py-0.5 rounded">v2.0</span>
+          <span className="text-[10px] text-slate-400 font-mono ml-2 bg-slate-100 px-2 py-0.5 rounded">v2.0</span>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigateToChat && onNavigateToChat("")}
-            className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+            className="hidden sm:flex items-center gap-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
             title="Quick search (Cmd+K)"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             Search
-            <kbd className="text-[10px] text-slate-500 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-mono ml-1">⌘K</kbd>
+            <kbd className="text-[10px] text-slate-500 bg-slate-100 border border-slate-300 rounded px-1 py-0.5 font-mono ml-1">⌘K</kbd>
           </button>
           <NotificationBell onNavigate={handleNavigate} />
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs text-slate-400 font-mono">ONLINE</span>
+            <span className="text-xs text-slate-500 font-mono">ONLINE</span>
           </div>
-          <span className="text-xs text-slate-500 bg-slate-800 px-3 py-1.5 rounded font-mono border border-slate-700">
+          <span className="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded font-mono border border-slate-200">
             SITE: ULM
           </span>
         </div>
@@ -111,15 +111,15 @@ export default function HomeScreen({ onNavigateToChat }) {
 
         {/* Metric Detail Panel */}
         {expandedMetric && dashboard && (
-          <div className="card-dark p-5 animate-fadeIn border-blue-900/30">
+          <div className="card-dark p-5 animate-fadeIn border-blue-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-200 font-mono uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-slate-800 font-mono uppercase tracking-wider">
                 {expandedMetric === "tests" && "Tests This Week"}
                 {expandedMetric === "anomalies" && "Flagged Anomalies"}
                 {expandedMetric === "materials" && "Tracked Materials"}
                 {expandedMetric === "boundaries" && "Boundary Risks"}
               </h3>
-              <button onClick={() => setExpandedMetric(null)} className="text-xs text-slate-500 hover:text-slate-300">✕ Close</button>
+              <button onClick={() => setExpandedMetric(null)} className="text-xs text-slate-500 hover:text-slate-700">✕ Close</button>
             </div>
 
             {expandedMetric === "tests" && (
@@ -136,9 +136,9 @@ export default function HomeScreen({ onNavigateToChat }) {
                     {(dashboard.recent_tests ?? []).map((t, i) => (
                       <tr key={i}>
                         <td className="px-3 py-1.5 font-mono text-slate-500">{t.date}</td>
-                        <td className="px-3 py-1.5 font-medium text-slate-200">{t.material}</td>
+                        <td className="px-3 py-1.5 font-medium text-slate-800">{t.material}</td>
                         <td className="px-3 py-1.5">{t.test_type}</td>
-                        <td className="px-3 py-1.5 font-mono text-slate-400">{t.machine}</td>
+                        <td className="px-3 py-1.5 font-mono text-slate-500">{t.machine}</td>
                         <td className="px-3 py-1.5">{t.site}</td>
                         <td className="px-3 py-1.5">{t.tester}</td>
                       </tr>
@@ -154,10 +154,10 @@ export default function HomeScreen({ onNavigateToChat }) {
                   <p className="text-sm text-slate-500">No anomalies detected — all materials within normal range.</p>
                 ) : (
                   (dashboard.anomalies ?? []).map((a, i) => (
-                    <button key={i} onClick={() => handleNavigate(`Is ${a.material} tensile strength degrading?`)} className="w-full text-left bg-amber-950/30 border border-amber-800/40 rounded-lg px-4 py-3 hover:border-amber-600/60 transition-colors">
-                      <p className="text-xs font-semibold text-amber-400 font-mono">{a.material}</p>
-                      <p className="text-xs text-amber-300/70 mt-0.5">{a.issue}</p>
-                      <p className="text-[10px] text-amber-500/50 mt-1">Click to investigate →</p>
+                    <button key={i} onClick={() => handleNavigate(`Is ${a.material} tensile strength degrading?`)} className="w-full text-left bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 hover:border-amber-400 transition-colors">
+                      <p className="text-xs font-semibold text-amber-600 font-mono">{a.material}</p>
+                      <p className="text-xs text-amber-700 mt-0.5">{a.issue}</p>
+                      <p className="text-[10px] text-amber-500 mt-1">Click to investigate →</p>
                     </button>
                   ))
                 )}
@@ -166,8 +166,8 @@ export default function HomeScreen({ onNavigateToChat }) {
 
             {expandedMetric === "materials" && (
               <div className="flex flex-wrap gap-2">
-                {["FancyPlast 42", "UltraPlast 99", "Hostacomp G2", "Stardust", "FancyPlast 84", "NovaTex 10"].map((m) => (
-                  <button key={m} onClick={() => handleNavigate(`Summarize all properties for ${m}`)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-blue-500/50 hover:text-blue-400 transition-colors font-mono">
+                {["Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL", "Papier", "Seperator", "NMC850510", "GDL-Material"].map((m) => (
+                  <button key={m} onClick={() => handleNavigate(`Summarize all properties for ${m}`)} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 hover:border-blue-400 hover:text-blue-600 transition-colors font-mono">
                     {m}
                     <span className="block text-[10px] text-slate-500 mt-0.5 font-sans">Click to view</span>
                   </button>
@@ -181,10 +181,10 @@ export default function HomeScreen({ onNavigateToChat }) {
                   <p className="text-sm text-slate-500">No boundary risks detected.</p>
                 ) : (
                   (dashboard.boundary_risks_detail ?? []).map((r, i) => (
-                    <button key={i} onClick={() => handleNavigate(`Will ${r.material} ${r.property.replace(/_/g, " ")} violate ${r.boundary} MPa?`)} className="w-full text-left bg-red-950/30 border border-red-800/40 rounded-lg px-4 py-3 hover:border-red-600/60 transition-colors">
-                      <p className="text-xs font-semibold text-red-400 font-mono">{r.material}</p>
-                      <p className="text-xs text-red-300/70 mt-0.5">{r.property.replace(/_/g, " ")}: {r.current?.toFixed(1)} MPa → boundary {r.boundary} MPa in ~{r.eta_months}mo</p>
-                      <p className="text-[10px] text-red-500/50 mt-1">Click to forecast →</p>
+                    <button key={i} onClick={() => handleNavigate(`Will ${r.material} ${r.property.replace(/_/g, " ")} violate ${r.boundary} MPa?`)} className="w-full text-left bg-red-50 border border-red-200 rounded-lg px-4 py-3 hover:border-red-400 transition-colors">
+                      <p className="text-xs font-semibold text-red-600 font-mono">{r.material}</p>
+                      <p className="text-xs text-red-700 mt-0.5">{r.property.replace(/_/g, " ")}: {r.current?.toFixed(1)} MPa → boundary {r.boundary} MPa in ~{r.eta_months}mo</p>
+                      <p className="text-[10px] text-red-500 mt-1">Click to forecast →</p>
                     </button>
                   ))
                 )}
@@ -208,17 +208,17 @@ export default function HomeScreen({ onNavigateToChat }) {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleNavigate(inputText)}
-                placeholder="Ask anything — 'Is FancyPlast 42 tensile strength declining?'"
-                className="w-full h-[48px] px-5 pr-16 border border-slate-700 rounded-lg text-sm bg-[#1e2433] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono transition-colors"
+                placeholder="Ask anything — 'Show all tensile tests for Steel'"
+                className="w-full h-[48px] px-5 pr-16 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono transition-colors"
               />
-              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 font-mono pointer-events-none">
+              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 bg-slate-100 border border-slate-300 rounded px-1.5 py-0.5 font-mono pointer-events-none">
                 ⌘K
               </kbd>
             </div>
             <button
               onClick={() => handleNavigate(inputText)}
               disabled={!inputText.trim()}
-              className="h-[48px] px-6 bg-blue-600 text-white rounded-lg font-mono text-sm hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
+              className="h-[48px] px-6 bg-blue-600 text-white rounded-lg font-mono text-sm hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
             >
               QUERY
             </button>
@@ -237,7 +237,7 @@ export default function HomeScreen({ onNavigateToChat }) {
                 <button
                   key={i}
                   onClick={() => handleNavigate(q)}
-                  className="text-xs px-3 py-1.5 bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 rounded transition-colors truncate max-w-xs font-mono"
+                  className="text-xs px-3 py-1.5 bg-slate-100 border border-slate-200 hover:border-slate-400 text-slate-500 hover:text-slate-800 rounded transition-colors truncate max-w-xs font-mono"
                   title={q}
                 >
                   ↩ {q}
@@ -250,9 +250,9 @@ export default function HomeScreen({ onNavigateToChat }) {
         {/* AI Proactive Insights */}
         {(insightsLoading || insights.length > 0) && (
           <div className="card-dark overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[#2a3144] flex items-center gap-2">
+            <div className="px-5 py-3.5 border-b border-slate-200 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-              <h2 className="text-sm font-semibold text-slate-300 font-mono uppercase tracking-wider">Proactive Insights</h2>
+              <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Proactive Insights</h2>
               <span className="ml-auto text-xs text-slate-500 font-mono">Auto-scanned</span>
             </div>
             <div className="p-4">
@@ -269,8 +269,8 @@ export default function HomeScreen({ onNavigateToChat }) {
                       onClick={() => handleNavigate(insight.action)}
                       className={`text-left rounded-lg border px-4 py-3 transition-all hover-lift group animate-fadeInUp ${
                         insight.severity === "critical"
-                          ? "bg-red-950/30 border-red-800/40 hover:border-red-600/60"
-                          : "bg-amber-950/30 border-amber-800/40 hover:border-amber-600/60"
+                          ? "bg-red-50 border-red-200 hover:border-red-400"
+                          : "bg-amber-50 border-amber-200 hover:border-amber-400"
                       }`}
                       style={{ animationDelay: `${i * 100}ms` }}
                     >
@@ -279,26 +279,26 @@ export default function HomeScreen({ onNavigateToChat }) {
                           <span
                             className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1.5 font-mono ${
                               insight.severity === "critical"
-                                ? "bg-red-900/50 text-red-400"
-                                : "bg-amber-900/50 text-amber-400"
+                                ? "bg-red-100 text-red-600"
+                                : "bg-amber-100 text-amber-600"
                             }`}
                           >
                             {insight.severity}
                           </span>
                           {windowMonths != null && (
-                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1.5 ml-1 font-mono bg-cyan-900/50 text-cyan-300 border border-cyan-700/50">
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1.5 ml-1 font-mono bg-cyan-100 text-cyan-700 border border-cyan-300">
                               Last {windowMonths}mo
                             </span>
                           )}
-                          <p className="text-sm font-semibold text-slate-200">{insight.title}</p>
-                          <p className="text-xs text-slate-300 mt-0.5">{insight.detail}</p>
+                          <p className="text-sm font-semibold text-slate-800">{insight.title}</p>
+                          <p className="text-xs text-slate-700 mt-0.5">{insight.detail}</p>
                           {windowMonths != null && (
                             <p className="text-[10px] text-slate-500 mt-1 font-mono uppercase tracking-wide">
                               Analysis window: last {windowMonths} months
                             </p>
                           )}
                         </div>
-                        <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-slate-400 group-hover:text-slate-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -318,12 +318,12 @@ export default function HomeScreen({ onNavigateToChat }) {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-xs text-slate-400 font-mono uppercase tracking-wider">Data Quality</span>
+                <span className="text-xs text-slate-500 font-mono uppercase tracking-wider">Data Quality</span>
               </div>
-              <div className="h-4 w-px bg-slate-700" />
+              <div className="h-4 w-px bg-slate-200" />
               <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
-                <span><span className="text-slate-300">{dashboard.recent_tests?.length || 0}</span> recent</span>
-                <span><span className="text-slate-300">{dashboard.materials_in_db}</span> materials</span>
+                <span><span className="text-slate-700">{dashboard.recent_tests?.length || 0}</span> recent</span>
+                <span><span className="text-slate-700">{dashboard.materials_in_db}</span> materials</span>
                 <span>Coverage: <span className="text-emerald-400">2023-2025</span></span>
               </div>
             </div>
@@ -342,13 +342,13 @@ export default function HomeScreen({ onNavigateToChat }) {
         <div className="grid grid-cols-2 gap-6">
           {/* Recent Tests */}
           <div className="card-dark overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[#2a3144]">
-              <h2 className="text-sm font-semibold text-slate-300 font-mono uppercase tracking-wider">Recent Tests</h2>
+            <div className="px-5 py-3.5 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Recent Tests</h2>
             </div>
             {loading ? (
               <div className="px-5 py-4 space-y-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-8 bg-slate-800 rounded animate-pulse" />
+                  <div key={i} className="h-8 bg-slate-100 rounded animate-pulse" />
                 ))}
               </div>
             ) : (
@@ -365,11 +365,11 @@ export default function HomeScreen({ onNavigateToChat }) {
                     {(dashboard?.recent_tests ?? []).map((t, i) => (
                       <tr key={i}>
                         <td className="px-4 py-2 font-mono text-slate-500">{t.date}</td>
-                        <td className="px-4 py-2 font-medium text-slate-200">{t.material}</td>
-                        <td className="px-4 py-2 text-slate-400">{t.test_type}</td>
+                        <td className="px-4 py-2 font-medium text-slate-800">{t.material}</td>
+                        <td className="px-4 py-2 text-slate-500">{t.test_type}</td>
                         <td className="px-4 py-2 font-mono text-slate-500">{t.machine}</td>
-                        <td className="px-4 py-2 text-slate-400">{t.site}</td>
-                        <td className="px-4 py-2 text-slate-400">{t.tester}</td>
+                        <td className="px-4 py-2 text-slate-500">{t.site}</td>
+                        <td className="px-4 py-2 text-slate-500">{t.tester}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -381,23 +381,23 @@ export default function HomeScreen({ onNavigateToChat }) {
           {/* Alerts Panel */}
           <div className="space-y-4">
             <div className="card-dark overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-[#2a3144]">
-                <h2 className="text-sm font-semibold text-slate-300 font-mono uppercase tracking-wider">Anomalies</h2>
+              <div className="px-5 py-3.5 border-b border-slate-200">
+                <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Anomalies</h2>
               </div>
               <div className="p-3 space-y-2">
                 {loading ? (
                   <div className="space-y-2 px-2 py-2">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-12 bg-slate-800 rounded-lg animate-pulse" />
+                      <div key={i} className="h-12 bg-slate-100 rounded-lg animate-pulse" />
                     ))}
                   </div>
                 ) : (dashboard?.anomalies ?? []).length === 0 ? (
                   <p className="text-sm text-slate-500 px-2 py-2 font-mono">No anomalies detected</p>
                 ) : (
                   (dashboard?.anomalies ?? []).map((a, i) => (
-                    <div key={i} className="bg-amber-950/30 border border-amber-800/40 rounded-lg px-3 py-2.5">
-                      <p className="text-xs font-semibold text-amber-400 font-mono">{a.material}</p>
-                      <p className="text-xs text-amber-300/70 mt-0.5">{a.issue}</p>
+                    <div key={i} className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                      <p className="text-xs font-semibold text-amber-600 font-mono">{a.material}</p>
+                      <p className="text-xs text-amber-700 mt-0.5">{a.issue}</p>
                     </div>
                   ))
                 )}
@@ -405,23 +405,23 @@ export default function HomeScreen({ onNavigateToChat }) {
             </div>
 
             <div className="card-dark overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-[#2a3144]">
-                <h2 className="text-sm font-semibold text-slate-300 font-mono uppercase tracking-wider">Boundary Risks</h2>
+              <div className="px-5 py-3.5 border-b border-slate-200">
+                <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Boundary Risks</h2>
               </div>
               <div className="p-3 space-y-2">
                 {loading ? (
                   <div className="space-y-2 px-2 py-2">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-12 bg-slate-800 rounded-lg animate-pulse" />
+                      <div key={i} className="h-12 bg-slate-100 rounded-lg animate-pulse" />
                     ))}
                   </div>
                 ) : (dashboard?.boundary_risks_detail ?? []).length === 0 ? (
                   <p className="text-sm text-slate-500 px-2 py-2 font-mono">No boundary risks</p>
                 ) : (
                   (dashboard?.boundary_risks_detail ?? []).map((r, i) => (
-                    <div key={i} className="bg-red-950/30 border border-red-800/40 rounded-lg px-3 py-2.5">
-                      <p className="text-xs font-semibold text-red-400 font-mono">{r.material}</p>
-                      <p className="text-xs text-red-300/70 mt-0.5">
+                    <div key={i} className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                      <p className="text-xs font-semibold text-red-600 font-mono">{r.material}</p>
+                      <p className="text-xs text-red-700 mt-0.5">
                         {r.property.replace(/_/g, " ")}: {r.current?.toFixed(1)} MPa → boundary {r.boundary} MPa in ~{r.eta_months}mo
                       </p>
                     </div>

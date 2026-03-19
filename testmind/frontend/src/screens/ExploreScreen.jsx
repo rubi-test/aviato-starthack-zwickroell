@@ -7,16 +7,17 @@ import {
 } from "recharts";
 
 const MATERIALS = [
-  "FancyPlast 42", "UltraPlast 99", "Hostacomp G2",
-  "Stardust", "FancyPlast 84", "NovaTex 10",
+  "Steel", "FEP", "Spur+ 1015",
+  "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
 ];
 
 const PROPERTIES = [
-  { key: "tensile_strength_mpa", label: "Tensile Strength", unit: "MPa" },
-  { key: "tensile_modulus_mpa", label: "Tensile Modulus", unit: "MPa" },
-  { key: "elongation_at_break_pct", label: "Elongation at Break", unit: "%" },
-  { key: "impact_energy_j", label: "Impact Energy", unit: "J" },
   { key: "max_force_n", label: "Max Force", unit: "N" },
+  { key: "tensile_modulus_mpa", label: "Young's Modulus", unit: "MPa" },
+  { key: "upper_yield_point_mpa", label: "Upper Yield Point", unit: "MPa" },
+  { key: "elongation_at_break_pct", label: "Elongation at Break", unit: "%" },
+  { key: "force_at_break_n", label: "Force at Break", unit: "N" },
+  { key: "work_to_max_force_j", label: "Work to Max Force", unit: "J" },
 ];
 
 const COMPARE_COLORS = { primary: "#3b82f6", compare: "#f59e0b" };
@@ -80,13 +81,13 @@ export default function ExploreScreen({ onBack }) {
   })();
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
-      <header className="bg-[#141820] border-b border-[#2a3144] px-6 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="text-sm text-blue-400 hover:text-blue-300 font-mono font-medium">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3">
+        <button onClick={onBack} className="text-sm text-blue-600 hover:text-blue-500 font-mono font-medium">
           ← BACK
         </button>
-        <span className="text-[#2a3144]">|</span>
-        <span className="text-sm font-semibold text-slate-200 font-mono">DATA EXPLORER</span>
+        <span className="text-slate-200">|</span>
+        <span className="text-sm font-semibold text-slate-800 font-mono">DATA EXPLORER</span>
         <span className="text-xs text-slate-500 font-mono">Interactive analysis without typing</span>
       </header>
 
@@ -105,7 +106,7 @@ export default function ExploreScreen({ onBack }) {
                   className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono transition-all ${
                     material === m
                       ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-[#1e2433] border border-[#2a3144] text-slate-400 hover:border-blue-500/50 hover:text-blue-400"
+                      : "bg-white border border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
                   }`}
                 >
                   {m}
@@ -120,7 +121,7 @@ export default function ExploreScreen({ onBack }) {
             <select
               value={property}
               onChange={(e) => setProperty(e.target.value)}
-              className="px-3 py-2 border border-[#2a3144] rounded-lg text-sm bg-[#1e2433] text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               {PROPERTIES.map((p) => (
                 <option key={p.key} value={p.key}>{p.label} ({p.unit})</option>
@@ -141,7 +142,7 @@ export default function ExploreScreen({ onBack }) {
                   className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono transition-all ${
                     compareMaterial === m
                       ? "bg-amber-500 text-white shadow-sm"
-                      : "bg-[#1e2433] border border-[#2a3144] text-slate-500 hover:border-amber-500/50 hover:text-amber-400"
+                      : "bg-white border border-slate-200 text-slate-500 hover:border-amber-400 hover:text-amber-600"
                   }`}
                 >
                   {m}
@@ -150,7 +151,7 @@ export default function ExploreScreen({ onBack }) {
             </div>
           </div>
           {compareMaterial && (
-            <button onClick={() => setCompareMaterial(null)} className="text-xs text-slate-600 hover:text-slate-400 font-mono">
+            <button onClick={() => setCompareMaterial(null)} className="text-xs text-slate-400 hover:text-slate-500 font-mono">
               CLEAR
             </button>
           )}
@@ -162,8 +163,8 @@ export default function ExploreScreen({ onBack }) {
             <div className={`grid gap-3 ${compareMaterial && compareData ? "grid-cols-2" : "grid-cols-5"}`}>
               {compareMaterial && compareData ? (
                 <>
-                  <div className="card-dark p-4 border-blue-800/40">
-                    <p className="text-xs font-semibold text-blue-400 mb-3 uppercase tracking-wide font-mono">{material}</p>
+                  <div className="card-dark p-4 border-blue-200">
+                    <p className="text-xs font-semibold text-blue-600 mb-3 uppercase tracking-wide font-mono">{material}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {[
                         { label: "n", value: data.stats.n },
@@ -174,13 +175,13 @@ export default function ExploreScreen({ onBack }) {
                       ].map(({ label, value }) => (
                         <div key={label} className="text-center">
                           <p className="text-[10px] text-slate-500 uppercase font-mono">{label}</p>
-                          <p className="text-sm font-bold text-slate-200 mt-0.5 font-mono">{value}</p>
+                          <p className="text-sm font-bold text-slate-800 mt-0.5 font-mono">{value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="card-dark p-4 border-amber-800/40">
-                    <p className="text-xs font-semibold text-amber-400 mb-3 uppercase tracking-wide font-mono">{compareMaterial}</p>
+                  <div className="card-dark p-4 border-amber-200">
+                    <p className="text-xs font-semibold text-amber-600 mb-3 uppercase tracking-wide font-mono">{compareMaterial}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {[
                         { label: "n", value: compareData.stats.n },
@@ -191,7 +192,7 @@ export default function ExploreScreen({ onBack }) {
                       ].map(({ label, value }) => (
                         <div key={label} className="text-center">
                           <p className="text-[10px] text-slate-500 uppercase font-mono">{label}</p>
-                          <p className="text-sm font-bold text-slate-200 mt-0.5 font-mono">{value}</p>
+                          <p className="text-sm font-bold text-slate-800 mt-0.5 font-mono">{value}</p>
                         </div>
                       ))}
                     </div>
@@ -200,27 +201,27 @@ export default function ExploreScreen({ onBack }) {
               ) : (
                 [
                   { label: "Tests", value: data.stats.n, color: "" },
-                  { label: "Mean", value: `${data.stats.mean} ${data.unit}`, color: "text-blue-400" },
+                  { label: "Mean", value: `${data.stats.mean} ${data.unit}`, color: "text-blue-600" },
                   { label: "Std Dev", value: `±${data.stats.std}`, color: "" },
-                  { label: "Min", value: `${data.stats.min} ${data.unit}`, color: "text-emerald-400" },
-                  { label: "Max", value: `${data.stats.max} ${data.unit}`, color: "text-red-400" },
+                  { label: "Min", value: `${data.stats.min} ${data.unit}`, color: "text-emerald-600" },
+                  { label: "Max", value: `${data.stats.max} ${data.unit}`, color: "text-red-600" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="card-dark p-4 text-center animate-scaleIn">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wide font-mono">{label}</p>
-                    <p className={`text-lg font-bold mt-1 font-mono ${color || "text-slate-200"}`}>{value}</p>
+                    <p className={`text-lg font-bold mt-1 font-mono ${color || "text-slate-800"}`}>{value}</p>
                   </div>
                 ))
               )}
             </div>
             {compareMaterial && compareData && (
-              <div className="mt-3 bg-[#1e2433] rounded-xl border border-[#2a3144] p-3 flex items-center justify-center gap-6 text-xs animate-fadeIn">
+              <div className="mt-3 bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center gap-6 text-xs animate-fadeIn">
                 <span className="text-slate-500 font-mono">Mean diff:</span>
                 <span className={`font-bold text-sm font-mono ${
-                  data.stats.mean > compareData.stats.mean ? "text-blue-400" : "text-amber-400"
+                  data.stats.mean > compareData.stats.mean ? "text-blue-600" : "text-amber-600"
                 }`}>
                   {data.stats.mean > compareData.stats.mean ? "+" : ""}{(data.stats.mean - compareData.stats.mean).toFixed(2)} {data.unit}
                 </span>
-                <span className="text-[#2a3144]">|</span>
+                <span className="text-slate-200">|</span>
                 <span className="text-slate-500 font-mono">{material} is {
                   data.stats.mean > compareData.stats.mean ? "higher" : "lower"
                 } by {Math.abs(((data.stats.mean - compareData.stats.mean) / compareData.stats.mean) * 100).toFixed(1)}%</span>
@@ -245,7 +246,7 @@ export default function ExploreScreen({ onBack }) {
           ) : (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-200 font-mono">
+                <h3 className="text-sm font-semibold text-slate-800 font-mono">
                   {material}{compareMaterial ? ` vs ${compareMaterial}` : ""} — {propInfo.label}
                 </h3>
                 {data?.trend && (
@@ -253,7 +254,7 @@ export default function ExploreScreen({ onBack }) {
                     <span>
                       Slope:{" "}
                       <span className={`font-semibold ${
-                        data.trend.slope < -0.1 ? "text-red-400" : data.trend.slope > 0.1 ? "text-emerald-400" : "text-slate-400"
+                        data.trend.slope < -0.1 ? "text-red-600" : data.trend.slope > 0.1 ? "text-emerald-600" : "text-slate-500"
                       }`}>
                         {data.trend.slope > 0 ? "+" : ""}{data.trend.slope} {data.unit}/mo
                       </span>
@@ -264,27 +265,27 @@ export default function ExploreScreen({ onBack }) {
               </div>
               <ResponsiveContainer width="100%" height={340}>
                 <ComposedChart data={mergedTimeSeries} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} stroke="#2a3144" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} stroke="#e2e8f0" />
                   <YAxis
                     tickFormatter={(v) => `${v}`}
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     width={55}
-                    stroke="#2a3144"
+                    stroke="#e2e8f0"
                     label={{ value: propInfo.unit, angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
                   />
                   <Tooltip
                     content={({ payload, label }) => {
                       if (!payload?.length) return null;
                       return (
-                        <div className="bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg px-3 py-2 text-xs">
-                          <p className="font-semibold text-slate-200 mb-1 font-mono">{label}</p>
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                          <p className="font-semibold text-slate-800 mb-1 font-mono">{label}</p>
                           {payload.filter(p => p.value != null).map((p, i) => (
                             <p key={i} style={{ color: p.color }} className="font-mono">
                               {p.name}: {typeof p.value === "number" ? p.value.toFixed(2) : p.value} {propInfo.unit}
                             </p>
                           ))}
-                          <p className="text-slate-600 mt-1 font-mono">Click dot to drill down</p>
+                          <p className="text-slate-400 mt-1 font-mono">Click dot to drill down</p>
                         </div>
                       );
                     }}
@@ -302,7 +303,7 @@ export default function ExploreScreen({ onBack }) {
                       <Line type="monotone" dataKey="compare_trend" name={`${compareMaterial} trend`} stroke="#d97706" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={true} animationDuration={800} />
                     </>
                   )}
-                  <Brush dataKey="date" height={24} stroke="#3b82f6" fill="#141820" tickFormatter={(v) => v} travellerWidth={8} />
+                  <Brush dataKey="date" height={24} stroke="#3b82f6" fill="#f8fafc" tickFormatter={(v) => v} travellerWidth={8} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -311,32 +312,32 @@ export default function ExploreScreen({ onBack }) {
 
         {/* Drill-down panel */}
         {selectedTest && (
-          <div className="card-dark p-5 border-blue-800/40 animate-fadeIn">
+          <div className="card-dark p-5 border-blue-200 animate-fadeIn">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-200 font-mono">
+              <h3 className="text-sm font-semibold text-slate-800 font-mono">
                 Individual tests — {selectedTest.month}
               </h3>
-              <button onClick={() => setSelectedTest(null)} className="text-xs text-slate-600 hover:text-slate-400 font-mono">
+              <button onClick={() => setSelectedTest(null)} className="text-xs text-slate-400 hover:text-slate-500 font-mono">
                 CLOSE
               </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse table-dark">
                 <thead>
-                  <tr className="bg-blue-950/30">
+                  <tr className="bg-blue-50">
                     {["Date", "Value", "Machine", "Site", "Tester"].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-blue-400 border-b border-[#2a3144] font-mono">{h}</th>
+                      <th key={h} className="text-left px-3 py-2 font-semibold text-blue-600 border-b border-slate-200 font-mono">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {selectedTest.tests.map((t, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"}>
-                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.date}</td>
-                      <td className="px-3 py-2 border-b border-[#2a3144] font-semibold text-slate-200 font-mono">{t.value} {data?.unit}</td>
-                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.machine}</td>
-                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.site}</td>
-                      <td className="px-3 py-2 border-b border-[#2a3144] text-slate-400 font-mono">{t.tester}</td>
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                      <td className="px-3 py-2 border-b border-slate-200 text-slate-500 font-mono">{t.date}</td>
+                      <td className="px-3 py-2 border-b border-slate-200 font-semibold text-slate-800 font-mono">{t.value} {data?.unit}</td>
+                      <td className="px-3 py-2 border-b border-slate-200 text-slate-500 font-mono">{t.machine}</td>
+                      <td className="px-3 py-2 border-b border-slate-200 text-slate-500 font-mono">{t.site}</td>
+                      <td className="px-3 py-2 border-b border-slate-200 text-slate-500 font-mono">{t.tester}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -349,7 +350,7 @@ export default function ExploreScreen({ onBack }) {
         {data?.individual_tests?.length > 0 && !loading && (
           <div className="grid grid-cols-2 gap-4">
             <div className="card-dark p-5">
-              <h3 className="text-sm font-semibold text-slate-200 mb-3 font-mono">Value Distribution</h3>
+              <h3 className="text-sm font-semibold text-slate-800 mb-3 font-mono">Value Distribution</h3>
               {(() => {
                 const values = data.individual_tests.map(t => t.value);
                 const min = Math.min(...values);
@@ -369,17 +370,17 @@ export default function ExploreScreen({ onBack }) {
                   <div>
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={bins} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
-                        <XAxis dataKey="range" tick={{ fontSize: 9, fill: "#64748b" }} interval={0} angle={-30} textAnchor="end" height={40} stroke="#2a3144" />
-                        <YAxis tick={{ fontSize: 10, fill: "#64748b" }} width={30} stroke="#2a3144" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="range" tick={{ fontSize: 9, fill: "#64748b" }} interval={0} angle={-30} textAnchor="end" height={40} stroke="#e2e8f0" />
+                        <YAxis tick={{ fontSize: 10, fill: "#64748b" }} width={30} stroke="#e2e8f0" />
                         <Tooltip
                           content={({ payload }) => {
                             if (!payload?.length) return null;
                             const d = payload[0]?.payload;
                             return (
-                              <div className="bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg px-3 py-2 text-xs font-mono">
-                                <p className="font-semibold text-slate-200">{d.lo.toFixed(1)} - {d.hi.toFixed(1)} {data.unit}</p>
-                                <p className="text-slate-400">{d.count} tests</p>
+                              <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs font-mono">
+                                <p className="font-semibold text-slate-800">{d.lo.toFixed(1)} - {d.hi.toFixed(1)} {data.unit}</p>
+                                <p className="text-slate-500">{d.count} tests</p>
                               </div>
                             );
                           }}
@@ -395,9 +396,9 @@ export default function ExploreScreen({ onBack }) {
                       </BarChart>
                     </ResponsiveContainer>
                     <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-500 font-mono">
-                      <span>Mean: <span className="font-semibold text-slate-300">{mean.toFixed(1)}</span></span>
-                      <span>Std: <span className="font-semibold text-slate-300">{std.toFixed(2)}</span></span>
-                      <span>n: <span className="font-semibold text-slate-300">{values.length}</span></span>
+                      <span>Mean: <span className="font-semibold text-slate-700">{mean.toFixed(1)}</span></span>
+                      <span>Std: <span className="font-semibold text-slate-700">{std.toFixed(2)}</span></span>
+                      <span>n: <span className="font-semibold text-slate-700">{values.length}</span></span>
                     </div>
                   </div>
                 );
@@ -405,7 +406,7 @@ export default function ExploreScreen({ onBack }) {
             </div>
 
             <div className="card-dark p-5">
-              <h3 className="text-sm font-semibold text-slate-200 mb-3 font-mono">
+              <h3 className="text-sm font-semibold text-slate-800 mb-3 font-mono">
                 Individual Measurements ({data.individual_tests.length})
               </h3>
               <div className="flex flex-wrap gap-1">

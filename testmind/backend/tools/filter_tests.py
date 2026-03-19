@@ -1,8 +1,15 @@
 """Tool 1: filter_tests — Search and filter tests by metadata."""
 
 from collections import Counter
-from db import get_collection
-from tools.utils import filter_by_date_range, fuzzy_match_name, parse_natural_date_range, test_to_summary
+from data_access import get_tests_with_results, get_distinct_values, get_test_count
+from tools.utils import (
+    build_date_filter,
+    filter_by_date_range,
+    fuzzy_match_name,
+    parse_natural_date_range,
+    test_to_summary,
+)
+from db import is_mock
 
 
 def filter_tests(
@@ -18,7 +25,6 @@ def filter_tests(
     limit: int = 50,
 ) -> dict:
     """Search and filter tests by metadata. At least one parameter should be provided."""
-    tests_col = get_collection("Tests")
 
     # Resolve natural language date ranges
     if date_from and not date_to:
@@ -28,13 +34,13 @@ def filter_tests(
 
     # Fuzzy match string fields
     if material:
-        known = tests_col.distinct("TestParametersFlat.MATERIAL")
+        known = get_distinct_values("TestParametersFlat.MATERIAL")
         material = fuzzy_match_name(material, known)
     if customer:
-        known = tests_col.distinct("TestParametersFlat.CUSTOMER")
+        known = get_distinct_values("TestParametersFlat.CUSTOMER")
         customer = fuzzy_match_name(customer, known)
     if tester:
-        known = tests_col.distinct("TestParametersFlat.TESTER")
+        known = get_distinct_values("TestParametersFlat.TESTER")
         tester = fuzzy_match_name(tester, known)
 
     query = {}
@@ -58,24 +64,30 @@ def filter_tests(
     if site:
         query["TestParametersFlat.SITE"] = site
         filter_descriptions.append(f"site={site}")
+
+    # Date filtering
+    date_filter = build_date_filter(date, date_from, date_to)
+    query.update(date_filter)
     if date:
-        query["TestParametersFlat.Date"] = date
         filter_descriptions.append(f"date={date}")
+    if date_from:
+        filter_descriptions.append(f"date_from={date_from}")
+    if date_to:
+        filter_descriptions.append(f"date_to={date_to}")
 
-    matched = list(tests_col.find(query))
+    # Get total count first
+    total = get_test_count(query)
 
-    # Apply date range filtering (can't do in MongoDB query for DD.MM.YYYY strings)
-    if date_from or date_to:
+    # Fetch limited results
+    matched = get_tests_with_results(query, limit=limit, sort_by_date=True)
+
+    # For mock data with string dates, apply Python-side date filter
+    if is_mock() and (date_from or date_to) and not date:
         matched = filter_by_date_range(matched, date_from, date_to)
-        if date_from:
-            filter_descriptions.append(f"date_from={date_from}")
-        if date_to:
-            filter_descriptions.append(f"date_to={date_to}")
+        total = len(matched)
+        matched = matched[:limit]
 
-    total = len(matched)
-    limited = matched[:limit]
-
-    summaries = [test_to_summary(t) for t in limited]
+    summaries = [test_to_summary(t) for t in matched]
 
     # Build summary aggregations
     mat_counts = Counter(s["material"] for s in summaries)
@@ -83,7 +95,7 @@ def filter_tests(
 
     steps = [
         f"Filters applied: {', '.join(filter_descriptions) or 'none'}",
-        "Queried Tests collection with $match on TestParametersFlat fields",
+        "Queried tests collection with indexed filters",
         f"Found {total} matching tests" + (f" (showing first {limit})" if total > limit else ""),
     ]
 
