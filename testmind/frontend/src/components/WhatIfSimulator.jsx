@@ -71,7 +71,7 @@ function CorrelationSimulator({ data }) {
 function TrendSimulator({ data }) {
   const { slope_per_month, time_series, property } = data;
   const lastValue = time_series?.[time_series.length - 1]?.mean_value || 0;
-  const unit = data.unit || ("mpa" in (property || "") ? "MPa" : "_j" in (property || "") ? "J" : "%");
+  const unit = data.unit || ((property || "").includes("mpa") ? "MPa" : (property || "").includes("_j") ? "J" : "%");
 
   const [monthsForward, setMonthsForward] = useState(6);
   const predictedValue = (lastValue + slope_per_month * monthsForward).toFixed(1);
