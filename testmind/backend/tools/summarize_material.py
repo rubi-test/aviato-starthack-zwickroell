@@ -1,26 +1,37 @@
 """Tool 2: summarize_material_properties — Statistical summary for a material."""
 
-import numpy as np
-from db import get_collection
-from tools.utils import extract_property_values, fuzzy_match_name
-
-NUMERIC_PROPS = [
-    ("tensile_strength_mpa", "MPa"),
-    ("tensile_modulus_mpa", "MPa"),
-    ("elongation_at_break_pct", "%"),
-    ("impact_energy_j", "J"),
-    ("max_force_n", "N"),
-]
+from data_access import get_distinct_values, get_stats_aggregation
+from tools.utils import fuzzy_match_name, infer_test_type_filter
+from schema_map import TOOL_PROPERTIES
 
 
 def summarize_material_properties(material: str) -> dict:
     """Statistical summary of all measured properties for a material."""
-    tests_col = get_collection("Tests")
-    known = tests_col.distinct("TestParametersFlat.MATERIAL")
+    known = get_distinct_values("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
-    matched = list(tests_col.find({"TestParametersFlat.MATERIAL": material}))
 
-    if not matched:
+    base_query = {"TestParametersFlat.MATERIAL": material}
+
+    properties = []
+    for prop_name, unit in TOOL_PROPERTIES:
+        type_filter = infer_test_type_filter(prop_name)
+        query = {**base_query, **type_filter}
+
+        stats = get_stats_aggregation(query, prop_name)
+        if stats["n"] == 0:
+            continue
+
+        properties.append({
+            "name": prop_name,
+            "unit": unit,
+            "n": stats["n"],
+            "mean": stats["mean"],
+            "std": stats["std"],
+            "min": stats["min"],
+            "max": stats["max"],
+        })
+
+    if not properties:
         return {
             "result": {
                 "material": material,
@@ -30,24 +41,9 @@ def summarize_material_properties(material: str) -> dict:
             "steps": [f"Queried Tests collection for MATERIAL={material}", "Found 0 tests"],
         }
 
-    properties = []
-    for prop_name, unit in NUMERIC_PROPS:
-        values = extract_property_values(matched, prop_name)
-        if not values:
-            continue
-        arr = np.array(values)
-        properties.append({
-            "name": prop_name,
-            "unit": unit,
-            "n": len(values),
-            "mean": round(float(np.mean(arr)), 1),
-            "std": round(float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0, 1),
-            "min": round(float(np.min(arr)), 1),
-            "max": round(float(np.max(arr)), 1),
-        })
-
     # Build readable summary text
-    parts = [f"{material} — {len(matched)} tests in database."]
+    total_n = sum(p["n"] for p in properties)
+    parts = [f"{material} — {total_n} test values across {len(properties)} properties."]
     for p in properties:
         parts.append(
             f"  {p['name'].replace('_', ' ').title()}: "
@@ -56,8 +52,7 @@ def summarize_material_properties(material: str) -> dict:
 
     steps = [
         f"Queried all tests for MATERIAL={material}",
-        f"Found {len(matched)} tests",
-        f"Computed statistics for {len(properties)} numeric properties (mean, std, min, max)",
+        f"Computed statistics for {len(properties)} numeric properties via aggregation",
     ]
 
     return {

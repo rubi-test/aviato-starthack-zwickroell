@@ -48,9 +48,9 @@ function Sparkline({ data = [], color = "#3b82f6", width = 64, height = 20 }) {
 
 export default function MetricCard({ label, value, color = "default", onClick, active, sparklineData, subtitle }) {
   const colorMap = {
-    default: "text-slate-100",
-    warning: "text-amber-400",
-    danger: "text-red-400",
+    default: "text-slate-900",
+    warning: "text-amber-600",
+    danger: "text-red-600",
   };
   const sparkColorMap = {
     default: "#475569",
@@ -58,9 +58,9 @@ export default function MetricCard({ label, value, color = "default", onClick, a
     danger: "#dc2626",
   };
   const borderColor = {
-    default: active ? "border-blue-500/50 ring-1 ring-blue-500/20" : "border-[#2a3144] hover:border-slate-600",
-    warning: active ? "border-amber-500/50 ring-1 ring-amber-500/20" : "border-[#2a3144] hover:border-amber-700",
-    danger: active ? "border-red-500/50 ring-1 ring-red-500/20" : "border-[#2a3144] hover:border-red-700",
+    default: active ? "border-blue-500/50 ring-1 ring-blue-500/20" : "border-slate-200 hover:border-slate-300",
+    warning: active ? "border-amber-500/50 ring-1 ring-amber-500/20" : "border-slate-200 hover:border-amber-400",
+    danger: active ? "border-red-500/50 ring-1 ring-red-500/20" : "border-slate-200 hover:border-red-400",
   };
 
   const animatedValue = useAnimatedValue(typeof value === "number" ? value : 0);
@@ -69,7 +69,7 @@ export default function MetricCard({ label, value, color = "default", onClick, a
   return (
     <button
       onClick={onClick}
-      className={`bg-[#1e2433] rounded-xl border p-5 flex flex-col gap-1 text-left transition-all group hover-lift ${
+      className={`bg-white rounded-xl border p-5 flex flex-col gap-1 text-left transition-all group hover-lift ${
         borderColor[color] ?? borderColor.default
       } ${onClick ? "cursor-pointer" : "cursor-default"}`}
     >
@@ -81,7 +81,7 @@ export default function MetricCard({ label, value, color = "default", onClick, a
         {displayValue}
       </p>
       {subtitle && (
-        <p className="text-[10px] text-slate-600 mt-0.5 font-mono">{subtitle}</p>
+        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{subtitle}</p>
       )}
       {onClick && (
         <p className="text-[10px] text-blue-500/60 mt-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">CLICK TO EXPAND</p>

@@ -12,21 +12,21 @@ function TestDocCard({ doc }) {
   ].filter(([, v]) => v != null);
 
   return (
-    <div className="border border-[#2a3144] rounded-lg overflow-hidden">
+    <div className="border border-slate-200 rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-[#141820] transition-colors"
+        className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-100 transition-colors"
       >
-        <span className="flex gap-3 text-xs text-slate-400">
-          <span className="font-mono text-slate-600">{doc.date}</span>
-          <span className="font-semibold text-slate-300">{doc.material}</span>
+        <span className="flex gap-3 text-xs text-slate-500">
+          <span className="font-mono text-slate-400">{doc.date}</span>
+          <span className="font-semibold text-slate-700">{doc.material}</span>
           <span className="text-slate-500">{doc.test_type}</span>
-          <span className="text-slate-600">{doc.machine} · {doc.site}</span>
+          <span className="text-slate-400">{doc.machine} · {doc.site}</span>
         </span>
-        <span className="text-slate-600 text-xs ml-2">{open ? "▲" : "▶"}</span>
+        <span className="text-slate-400 text-xs ml-2">{open ? "▲" : "▶"}</span>
       </button>
       {open && (
-        <div className="px-3 pb-3 pt-1 border-t border-[#2a3144] bg-[#141820] grid grid-cols-2 gap-x-6 gap-y-1">
+        <div className="px-3 pb-3 pt-1 border-t border-slate-200 bg-white grid grid-cols-2 gap-x-6 gap-y-1">
           {[
             ["Customer", doc.customer],
             ["Tester", doc.tester],
@@ -36,15 +36,15 @@ function TestDocCard({ doc }) {
             ["Record ID", doc.id?.slice(0, 12) + "…"],
           ].map(([label, val]) => (
             <p key={label} className="text-xs text-slate-500 font-mono">
-              <span className="font-semibold text-slate-400">{label}:</span> {val || "—"}
+              <span className="font-semibold text-slate-500">{label}:</span> {val || "—"}
             </p>
           ))}
           {measured.length > 0 && (
-            <div className="col-span-2 mt-1 pt-1 border-t border-[#2a3144] flex flex-wrap gap-x-4 gap-y-1">
+            <div className="col-span-2 mt-1 pt-1 border-t border-slate-200 flex flex-wrap gap-x-4 gap-y-1">
               {measured.map(([label, val, unit]) => (
                 <p key={label} className="text-xs font-mono">
-                  <span className="font-semibold text-slate-400">{label}:</span>{" "}
-                  <span className="text-blue-400">{val} {unit}</span>
+                  <span className="font-semibold text-slate-500">{label}:</span>{" "}
+                  <span className="text-blue-600">{val} {unit}</span>
                 </p>
               ))}
             </div>
@@ -59,19 +59,19 @@ function TimeSeriesTable({ rows, labelKey, valueKey, valueLabel }) {
   return (
     <div className="overflow-auto max-h-48">
       <table className="w-full text-xs border-collapse">
-        <thead className="sticky top-0 bg-[#141820]">
+        <thead className="sticky top-0 bg-white">
           <tr>
-            <th className="text-left px-3 py-1.5 text-slate-500 font-semibold border-b border-[#2a3144] font-mono">Period</th>
-            <th className="text-right px-3 py-1.5 text-slate-500 font-semibold border-b border-[#2a3144] font-mono">{valueLabel}</th>
-            <th className="text-right px-3 py-1.5 text-slate-500 font-semibold border-b border-[#2a3144] font-mono">n</th>
+            <th className="text-left px-3 py-1.5 text-slate-500 font-semibold border-b border-slate-200 font-mono">Period</th>
+            <th className="text-right px-3 py-1.5 text-slate-500 font-semibold border-b border-slate-200 font-mono">{valueLabel}</th>
+            <th className="text-right px-3 py-1.5 text-slate-500 font-semibold border-b border-slate-200 font-mono">n</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"}>
-              <td className="px-3 py-1.5 font-mono text-slate-400 border-b border-[#2a3144]">{row[labelKey]}</td>
-              <td className="px-3 py-1.5 text-right font-mono font-semibold text-blue-400 border-b border-[#2a3144]">{row[valueKey]}</td>
-              <td className="px-3 py-1.5 text-right text-slate-600 border-b border-[#2a3144] font-mono">{row.n ?? "—"}</td>
+            <tr key={i} className={i % 2 === 0 ? "bg-slate-50" : "bg-white"}>
+              <td className="px-3 py-1.5 font-mono text-slate-500 border-b border-slate-200">{row[labelKey]}</td>
+              <td className="px-3 py-1.5 text-right font-mono font-semibold text-blue-600 border-b border-slate-200">{row[valueKey]}</td>
+              <td className="px-3 py-1.5 text-right text-slate-400 border-b border-slate-200 font-mono">{row.n ?? "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -96,7 +96,7 @@ function SourceRecords({ toolResult, toolUsed }) {
           <TestDocCard key={i} doc={doc} />
         ))}
         {total > count && (
-          <p className="text-xs text-slate-600 text-center py-1 font-mono">
+          <p className="text-xs text-slate-400 text-center py-1 font-mono">
             Showing first {count} of {total} records
           </p>
         )}
@@ -114,10 +114,10 @@ function SourceRecords({ toolResult, toolUsed }) {
     content = (
       <div className="grid grid-cols-2 gap-3">
         {[group_a, group_b].map((g) => (
-          <div key={g.name} className="bg-[#141820] border border-[#2a3144] rounded-lg p-3 space-y-1">
-            <p className="text-xs font-semibold text-slate-300 font-mono">{g.name}</p>
+          <div key={g.name} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-semibold text-slate-700 font-mono">{g.name}</p>
             <p className="text-xs text-slate-500 font-mono">
-              Mean: <span className="font-semibold text-blue-400">{g.mean}{unit}</span>
+              Mean: <span className="font-semibold text-blue-600">{g.mean}{unit}</span>
             </p>
             <p className="text-xs text-slate-500 font-mono">Std: <span>{g.std}{unit}</span></p>
             <p className="text-xs text-slate-500 font-mono">n: <span>{g.n}</span></p>
@@ -145,13 +145,13 @@ function SourceRecords({ toolResult, toolUsed }) {
   if (!label) return null;
 
   return (
-    <div className="mt-3 border-t border-dashed border-[#2a3144] pt-3">
+    <div className="mt-3 border-t border-dashed border-slate-200 pt-3">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors font-mono"
+        className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-500 font-medium transition-colors font-mono"
       >
         <span>{label}</span>
-        <span className="text-slate-600">{open ? "▲" : "▼"}</span>
+        <span className="text-slate-400">{open ? "▲" : "▼"}</span>
       </button>
       {open && <div className="mt-2">{content}</div>}
     </div>
@@ -164,35 +164,35 @@ export default function AuditTrail({ steps = [], toolResult, toolUsed }) {
   if (!steps.length && !toolResult) return null;
 
   return (
-    <div className="border border-[#2a3144] rounded-xl overflow-hidden mt-3">
+    <div className="border border-slate-200 rounded-xl overflow-hidden mt-3">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full text-left px-4 py-3 flex items-center justify-between text-sm text-slate-400 hover:bg-[#141820] transition-colors font-mono"
+        className="w-full text-left px-4 py-3 flex items-center justify-between text-sm text-slate-500 hover:bg-slate-100 transition-colors font-mono"
       >
         <span className="font-medium">AUDIT TRAIL ({steps.length} steps)</span>
-        <span className="text-slate-600">{open ? "▲" : "▼"}</span>
+        <span className="text-slate-400">{open ? "▲" : "▼"}</span>
       </button>
       {open && (
-        <div className="px-4 pb-4 border-t border-[#2a3144] bg-[#141820]">
+        <div className="px-4 pb-4 border-t border-slate-200 bg-white">
           <div className="relative ml-3 mt-3">
-            <div className="absolute left-0 top-0 bottom-0 w-px bg-[#2a3144]" />
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-200" />
             {steps.map((step, i) => (
               <div key={i} className="flex items-start gap-3 mb-3 animate-listItemIn" style={{ animationDelay: `${i * 80}ms` }}>
-                <div className="relative -left-[4px] mt-0.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-[#141820] flex-shrink-0" />
+                <div className="relative -left-[4px] mt-0.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-white flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-slate-400 leading-relaxed">{step}</p>
-                  <p className="text-[10px] text-slate-600 font-mono">Step {i + 1}</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">{step}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">Step {i + 1}</p>
                 </div>
               </div>
             ))}
           </div>
           {toolUsed && (
-            <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500 bg-[#1e2433] rounded-lg px-3 py-2 font-mono">
+            <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500 bg-slate-50 rounded-lg px-3 py-2 font-mono">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Tool: <span className="font-semibold text-slate-400">{toolUsed.replace(/_/g, " ")}</span>
+              Tool: <span className="font-semibold text-slate-500">{toolUsed.replace(/_/g, " ")}</span>
             </div>
           )}
           <SourceRecords toolResult={toolResult} toolUsed={toolUsed} />

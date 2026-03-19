@@ -29,7 +29,7 @@ export function ToastProvider({ children }) {
                 ? "bg-green-600 text-white"
                 : t.type === "error"
                 ? "bg-red-600 text-white"
-                : "bg-gray-800 text-white"
+                : "bg-slate-100 text-slate-900"
             }`}
           >
             {t.message}

@@ -26,7 +26,7 @@ import {
 import StatCards from "./StatCards";
 import WhatIfSimulator from "./WhatIfSimulator";
 
-const DARK_TOOLTIP = { background: "#1e2433", border: "1px solid #2a3144", borderRadius: "8px" };
+const DARK_TOOLTIP = { background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px" };
 
 function unitFor(property) {
   if (!property) return "";
@@ -65,17 +65,17 @@ function SortableTestTable({ tests, count }) {
       <p className="text-xs text-slate-500 mb-2 font-mono">{count} results</p>
       <div className="overflow-auto max-h-[380px]">
         <table className="w-full text-sm border-collapse">
-          <thead className="sticky top-0 bg-[#141820] z-10">
+          <thead className="sticky top-0 bg-white z-10">
             <tr>
               {cols.map((c) => (
                 <th
                   key={c}
                   onClick={() => toggleSort(c)}
-                  className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-[#2a3144] cursor-pointer hover:text-blue-400 select-none transition-colors font-mono"
+                  className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-200 cursor-pointer hover:text-blue-600 select-none transition-colors font-mono"
                 >
                   {c.replace(/_/g, " ")}
                   {sortCol === c && (
-                    <span className="ml-1 text-blue-400">{sortDir === "asc" ? "↑" : "↓"}</span>
+                    <span className="ml-1 text-blue-600">{sortDir === "asc" ? "↑" : "↓"}</span>
                   )}
                 </th>
               ))}
@@ -83,11 +83,11 @@ function SortableTestTable({ tests, count }) {
           </thead>
           <tbody>
             {sorted.map((t, i) => (
-              <tr key={i} className={`${i % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"} hover:bg-blue-950/30 transition-colors`}>
+              <tr key={i} className={`${i % 2 === 0 ? "bg-slate-50" : "bg-white"} hover:bg-blue-50 transition-colors`}>
                 {cols.map((c) => (
                   <td
                     key={c}
-                    className="px-3 py-2 text-slate-300 border-b border-[#2a3144] truncate max-w-[140px] font-mono"
+                    className="px-3 py-2 text-slate-700 border-b border-slate-200 truncate max-w-[140px] font-mono"
                   >
                     {t[c] || "—"}
                   </td>
@@ -131,7 +131,7 @@ function DataTable({ data }) {
           <div className="mb-4 animate-scaleIn">
             <ResponsiveContainer width="100%" height={260}>
               <RadarChart data={radarData}>
-                <PolarGrid stroke="#2a3144" />
+                <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="property" tick={{ fontSize: 10, fill: "#64748b" }} />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9, fill: "#475569" }} />
                 <Radar
@@ -146,22 +146,22 @@ function DataTable({ data }) {
                 <Tooltip
                   formatter={(v) => [`${v}%`, "Relative Score"]}
                   contentStyle={DARK_TOOLTIP}
-                  itemStyle={{ color: "#e2e8f0" }}
+                  itemStyle={{ color: "#334155" }}
                 />
               </RadarChart>
             </ResponsiveContainer>
-            <p className="text-xs text-slate-600 text-center -mt-2 font-mono">Property profile (normalized min→max)</p>
+            <p className="text-xs text-slate-400 text-center -mt-2 font-mono">Property profile (normalized min→max)</p>
           </div>
         )}
 
         <div className="overflow-auto max-h-[380px]">
           <table className="w-full text-sm border-collapse">
-            <thead className="sticky top-0 bg-[#141820] z-10">
+            <thead className="sticky top-0 bg-white z-10">
               <tr>
                 {["Property", "Unit", "n", "Mean", "±Std", "Min", "Max"].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-[#2a3144] font-mono"
+                    className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-200 font-mono"
                   >
                     {h}
                   </th>
@@ -170,18 +170,18 @@ function DataTable({ data }) {
             </thead>
             <tbody>
               {props.map((p, i) => (
-                <tr key={i} className={`${i % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"} animate-fadeInUp`} style={{ animationDelay: `${i * 50}ms` }}>
-                  <td className="px-3 py-2 text-slate-200 font-medium border-b border-[#2a3144] font-mono">
+                <tr key={i} className={`${i % 2 === 0 ? "bg-slate-50" : "bg-white"} animate-fadeInUp`} style={{ animationDelay: `${i * 50}ms` }}>
+                  <td className="px-3 py-2 text-slate-700 font-medium border-b border-slate-200 font-mono">
                     {p.name.replace(/_/g, " ")}
                   </td>
-                  <td className="px-3 py-2 text-slate-500 border-b border-[#2a3144] font-mono">{p.unit}</td>
-                  <td className="px-3 py-2 text-slate-400 border-b border-[#2a3144] font-mono">{p.n}</td>
-                  <td className="px-3 py-2 text-slate-200 font-semibold border-b border-[#2a3144] font-mono">
+                  <td className="px-3 py-2 text-slate-500 border-b border-slate-200 font-mono">{p.unit}</td>
+                  <td className="px-3 py-2 text-slate-500 border-b border-slate-200 font-mono">{p.n}</td>
+                  <td className="px-3 py-2 text-slate-700 font-semibold border-b border-slate-200 font-mono">
                     {p.mean}
                   </td>
-                  <td className="px-3 py-2 text-slate-500 border-b border-[#2a3144] font-mono">±{p.std}</td>
-                  <td className="px-3 py-2 text-slate-500 border-b border-[#2a3144] font-mono">{p.min}</td>
-                  <td className="px-3 py-2 text-slate-500 border-b border-[#2a3144] font-mono">{p.max}</td>
+                  <td className="px-3 py-2 text-slate-500 border-b border-slate-200 font-mono">±{p.std}</td>
+                  <td className="px-3 py-2 text-slate-500 border-b border-slate-200 font-mono">{p.min}</td>
+                  <td className="px-3 py-2 text-slate-500 border-b border-slate-200 font-mono">{p.max}</td>
                 </tr>
               ))}
             </tbody>
@@ -203,10 +203,10 @@ function TimeSeriesChart({ data, onDotClick }) {
   const unit = unitFor(property);
   const dirColor =
     trend_direction === "decreasing"
-      ? "text-red-400"
+      ? "text-red-600"
       : trend_direction === "increasing"
-      ? "text-emerald-400"
-      : "text-slate-400";
+      ? "text-emerald-600"
+      : "text-slate-600";
 
   const validPoints = time_series.filter((p) => p.mean_value != null);
   const minPt = validPoints.reduce((a, b) => (a.mean_value < b.mean_value ? a : b), validPoints[0]);
@@ -242,30 +242,30 @@ function TimeSeriesChart({ data, onDotClick }) {
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={withBands} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
-          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" stroke="#2a3144" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" stroke="#e2e8f0" />
           <YAxis
             tickFormatter={(v) => `${v}${unit}`}
             tick={{ fontSize: 11, fill: "#64748b" }}
             width={65}
-            stroke="#2a3144"
+            stroke="#e2e8f0"
           />
           <Tooltip
             content={({ payload, label }) => {
               if (!payload?.length) return null;
               const filtered = payload.filter(p => !p.dataKey?.startsWith("band_"));
               return (
-                <div className="bg-[#1e2433] border border-[#2a3144] rounded-lg shadow-lg px-3 py-2 text-xs font-mono">
-                  <p className="font-semibold text-slate-200 mb-1">{label}</p>
+                <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs font-mono">
+                  <p className="font-semibold text-slate-700 mb-1">{label}</p>
                   {filtered.map((p, i) => (
                     <p key={i} style={{ color: p.color }}>{p.name}: {p.value}{unit}</p>
                   ))}
-                  {onDotClick && <p className="text-blue-400 mt-1 text-[10px]">Click to drill down</p>}
+                  {onDotClick && <p className="text-blue-600 mt-1 text-[10px]">Click to drill down</p>}
                 </div>
               );
             }}
           />
-          <Legend wrapperStyle={{ color: "#94a3b8" }} />
+          <Legend wrapperStyle={{ color: "#64748b" }} />
           <Area type="monotone" dataKey="band_upper" stroke="none" fill="#3b82f6" fillOpacity={0.1} name="±1σ band" isAnimationActive={true} animationDuration={800} />
           <Area type="monotone" dataKey="band_lower" stroke="none" fill="transparent" fillOpacity={0} legendType="none" isAnimationActive={false} />
           <Line
@@ -284,14 +284,14 @@ function TimeSeriesChart({ data, onDotClick }) {
           />
           <Line type="monotone" dataKey="trend_value" name="Trend" stroke="#dc2626" strokeWidth={1.5} strokeDasharray="5 5" dot={false} isAnimationActive={true} animationDuration={800} />
           {withBands.length > 4 && (
-            <Brush dataKey="date" height={20} stroke="#3b82f6" fill="#141820" travellerWidth={8} />
+            <Brush dataKey="date" height={20} stroke="#3b82f6" fill="#ffffff" travellerWidth={8} />
           )}
           {minPt && (
-            <ReferenceDot x={minPt.date} y={minPt.mean_value} r={6} fill="#dc2626" stroke="#1e2433" strokeWidth={2}
+            <ReferenceDot x={minPt.date} y={minPt.mean_value} r={6} fill="#dc2626" stroke="#e2e8f0" strokeWidth={2}
               label={{ value: `Min: ${minPt.mean_value}${unit}`, position: "bottom", fontSize: 10, fill: "#ef4444", fontWeight: 600 }} />
           )}
           {maxPt && maxPt.date !== minPt?.date && (
-            <ReferenceDot x={maxPt.date} y={maxPt.mean_value} r={6} fill="#16a34a" stroke="#1e2433" strokeWidth={2}
+            <ReferenceDot x={maxPt.date} y={maxPt.mean_value} r={6} fill="#16a34a" stroke="#e2e8f0" strokeWidth={2}
               label={{ value: `Max: ${maxPt.mean_value}${unit}`, position: "top", fontSize: 10, fill: "#22c55e", fontWeight: 600 }} />
           )}
         </ComposedChart>
@@ -316,7 +316,7 @@ function ForecastChart({ data }) {
   return (
     <div>
       {will_violate && (
-        <div className="mb-3 px-3 py-2 bg-red-950/30 border border-red-800/40 rounded-lg text-sm text-red-400 flex items-center gap-2 font-mono">
+        <div className="mb-3 px-3 py-2 bg-red-50 border border-red-300 rounded-lg text-sm text-red-700 font-semibold flex items-center gap-2 font-mono">
           <span>WARNING</span>
           <span>
             Boundary violation expected:{" "}
@@ -326,11 +326,11 @@ function ForecastChart({ data }) {
       )}
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={combined} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e2433" />
-          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" stroke="#2a3144" />
-          <YAxis tickFormatter={(v) => `${v}${unit}`} tick={{ fontSize: 11, fill: "#64748b" }} width={65} stroke="#2a3144" />
-          <Tooltip formatter={(v, name) => v !== undefined && v !== null ? [`${v}${unit}`, name] : [undefined, name]} contentStyle={DARK_TOOLTIP} itemStyle={{ color: "#e2e8f0" }} />
-          <Legend wrapperStyle={{ color: "#94a3b8" }} />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" stroke="#e2e8f0" />
+          <YAxis tickFormatter={(v) => `${v}${unit}`} tick={{ fontSize: 11, fill: "#64748b" }} width={65} stroke="#e2e8f0" />
+          <Tooltip formatter={(v, name) => v !== undefined && v !== null ? [`${v}${unit}`, name] : [undefined, name]} contentStyle={DARK_TOOLTIP} itemStyle={{ color: "#334155" }} />
+          <Legend wrapperStyle={{ color: "#64748b" }} />
           <Line type="monotone" dataKey="actual" name="Actual" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} isAnimationActive={true} animationDuration={800} />
           <Line type="monotone" dataKey="trend" name="Trend" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls={false} isAnimationActive={true} animationDuration={800} />
           <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} connectNulls={false} isAnimationActive={true} animationDuration={800} />
@@ -355,7 +355,7 @@ function ScatterCorrelationChart({ data }) {
   const colorMap = {};
   materials.forEach((m, i) => { colorMap[m] = SCATTER_COLORS[i % SCATTER_COLORS.length]; });
 
-  const rColor = significant ? Math.abs(r) >= 0.7 ? "text-emerald-400" : "text-amber-400" : "text-slate-500";
+  const rColor = significant ? Math.abs(r) >= 0.7 ? "text-emerald-600" : "text-amber-600" : "text-slate-500";
 
   return (
     <div>
@@ -364,19 +364,19 @@ function ScatterCorrelationChart({ data }) {
         <span>p = <span>{p_value}</span></span>
         <span>
           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-            significant ? "bg-emerald-950/30 text-emerald-400 border border-emerald-800/40" : "bg-[#1e2433] text-slate-500 border border-[#2a3144]"
+            significant ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-slate-50 text-slate-500 border border-slate-200"
           }`}>
             {significant ? `${strength} ${direction}` : "not significant"}
           </span>
         </span>
-        <span className="text-slate-600">n={n}</span>
+        <span className="text-slate-400">n={n}</span>
       </div>
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e2433" />
-          <XAxis dataKey="x" name={property_x?.replace(/_/g, " ")} type="number" unit={unit_x ? ` ${unit_x}` : ""} tick={{ fontSize: 11, fill: "#64748b" }} stroke="#2a3144"
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="x" name={property_x?.replace(/_/g, " ")} type="number" unit={unit_x ? ` ${unit_x}` : ""} tick={{ fontSize: 11, fill: "#64748b" }} stroke="#e2e8f0"
             label={{ value: `${property_x?.replace(/_/g, " ")} (${unit_x})`, position: "insideBottom", offset: -10, fontSize: 11, fill: "#64748b" }} />
-          <YAxis dataKey="y" name={property_y?.replace(/_/g, " ")} type="number" unit={unit_y ? ` ${unit_y}` : ""} tick={{ fontSize: 11, fill: "#64748b" }} width={70} stroke="#2a3144"
+          <YAxis dataKey="y" name={property_y?.replace(/_/g, " ")} type="number" unit={unit_y ? ` ${unit_y}` : ""} tick={{ fontSize: 11, fill: "#64748b" }} width={70} stroke="#e2e8f0"
             label={{ value: `${property_y?.replace(/_/g, " ")} (${unit_y})`, angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }} />
           <ZAxis range={[30, 30]} />
           <Tooltip
@@ -386,11 +386,11 @@ function ScatterCorrelationChart({ data }) {
               const d = payload[0]?.payload;
               if (!d) return null;
               return (
-                <div className="bg-[#1e2433] border border-[#2a3144] rounded shadow-sm px-3 py-2 text-xs font-mono">
-                  <p className="font-semibold text-slate-200 mb-1">{d.material}</p>
-                  <p className="text-slate-400">{property_x?.replace(/_/g, " ")}: {d.x} {unit_x}</p>
-                  <p className="text-slate-400">{property_y?.replace(/_/g, " ")}: {d.y} {unit_y}</p>
-                  {d.date && <p className="text-slate-600 mt-1">{d.date}</p>}
+                <div className="bg-white border border-slate-200 rounded shadow-sm px-3 py-2 text-xs font-mono">
+                  <p className="font-semibold text-slate-700 mb-1">{d.material}</p>
+                  <p className="text-slate-500">{property_x?.replace(/_/g, " ")}: {d.x} {unit_x}</p>
+                  <p className="text-slate-500">{property_y?.replace(/_/g, " ")}: {d.y} {unit_y}</p>
+                  {d.date && <p className="text-slate-400 mt-1">{d.date}</p>}
                 </div>
               );
             }}
@@ -426,10 +426,10 @@ function ComplianceChart({ data }) {
 
   const verdictStyle =
     verdict === "COMPLIANT"
-      ? "bg-emerald-950/30 text-emerald-400 border-emerald-800/40"
+      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
       : verdict === "AT RISK"
-      ? "bg-amber-950/30 text-amber-400 border-amber-800/40"
-      : "bg-red-950/30 text-red-400 border-red-800/40";
+      ? "bg-amber-50 text-amber-600 border-amber-200"
+      : "bg-red-50 text-red-700 border-red-300";
 
   return (
     <div className="space-y-4">
@@ -448,43 +448,43 @@ function ComplianceChart({ data }) {
       <div className="grid grid-cols-4 gap-3">
         {[
           { label: "Total Tests", value: total_tests },
-          { label: "Passing", value: passing_tests, color: "text-emerald-400" },
-          { label: "Failing", value: failing_tests, color: "text-red-400" },
-          { label: "Pass Rate", value: `${pass_rate_pct}%`, color: pass_rate_pct >= 95 ? "text-emerald-400" : pass_rate_pct >= 80 ? "text-amber-400" : "text-red-400" },
+          { label: "Passing", value: passing_tests, color: "text-emerald-600" },
+          { label: "Failing", value: failing_tests, color: "text-red-600" },
+          { label: "Pass Rate", value: `${pass_rate_pct}%`, color: pass_rate_pct >= 95 ? "text-emerald-600" : pass_rate_pct >= 80 ? "text-amber-600" : "text-red-400" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#141820] rounded-lg p-3 text-center border border-[#2a3144]">
+          <div key={label} className="bg-white rounded-lg p-3 text-center border border-slate-200">
             <p className="text-[10px] text-slate-500 mb-1 font-mono">{label}</p>
-            <p className={`text-xl font-bold font-mono ${color || "text-slate-200"}`}>{value}</p>
+            <p className={`text-xl font-bold font-mono ${color || "text-slate-700"}`}>{value}</p>
           </div>
         ))}
       </div>
 
       <div className="text-xs text-slate-500 font-mono">
-        Mean: <span className="font-semibold text-slate-300">{mean_value} {unit}</span>
-        {" "}· Threshold: <span className="font-semibold text-slate-300">{threshold_value} {unit}</span>
+        Mean: <span className="font-semibold text-slate-700">{mean_value} {unit}</span>
+        {" "}· Threshold: <span className="font-semibold text-slate-700">{threshold_value} {unit}</span>
         {" "}· Rule: {property?.replace(/_/g, " ")} must be {direction === "above" ? "≥" : "≤"} {threshold_value} {unit}
       </div>
 
       {failed_test_samples?.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-red-400 mb-2 font-mono">NON-COMPLIANT SAMPLES (up to 10)</p>
+          <p className="text-xs font-semibold text-red-700 mb-2 font-mono">NON-COMPLIANT SAMPLES (up to 10)</p>
           <div className="overflow-auto max-h-48">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 bg-red-950/30">
+              <thead className="sticky top-0 bg-red-50">
                 <tr>
                   {["date", "material", "machine", "site", "value"].map((c) => (
-                    <th key={c} className="text-left px-2 py-1.5 font-semibold text-red-400 border-b border-red-800/40 font-mono">{c}</th>
+                    <th key={c} className="text-left px-2 py-1.5 font-semibold text-red-700 border-b border-red-200 font-mono">{c}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {failed_test_samples.map((t, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-[#1e2433]" : "bg-red-950/10"}>
-                    <td className="px-2 py-1.5 border-b border-[#2a3144] text-slate-400 font-mono">{t.date}</td>
-                    <td className="px-2 py-1.5 border-b border-[#2a3144] text-slate-400 font-mono">{t.material}</td>
-                    <td className="px-2 py-1.5 border-b border-[#2a3144] text-slate-400 font-mono">{t.machine}</td>
-                    <td className="px-2 py-1.5 border-b border-[#2a3144] text-slate-400 font-mono">{t.site}</td>
-                    <td className="px-2 py-1.5 border-b border-[#2a3144] font-semibold text-red-400 font-mono">{t.value} {unit}</td>
+                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-red-50"}>
+                    <td className="px-2 py-1.5 border-b border-slate-200 text-slate-600 font-mono">{t.date}</td>
+                    <td className="px-2 py-1.5 border-b border-slate-200 text-slate-600 font-mono">{t.material}</td>
+                    <td className="px-2 py-1.5 border-b border-slate-200 text-slate-600 font-mono">{t.machine}</td>
+                    <td className="px-2 py-1.5 border-b border-slate-200 text-slate-600 font-mono">{t.site}</td>
+                    <td className="px-2 py-1.5 border-b border-slate-200 font-semibold text-red-700 font-mono">{t.value} {unit}</td>
                   </tr>
                 ))}
               </tbody>
@@ -504,28 +504,28 @@ function DrillDownPanel({ date, data, unit, onClose }) {
   if (!point) return null;
 
   return (
-    <div className="bg-blue-950/20 border border-blue-800/30 rounded-xl p-4 animate-fadeIn">
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 animate-fadeIn">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-blue-400 font-mono">DRILL-DOWN — {date}</h3>
-        <button onClick={onClose} className="text-xs text-slate-600 hover:text-slate-400 font-mono">CLOSE</button>
+        <h3 className="text-sm font-semibold text-blue-600 font-mono">DRILL-DOWN — {date}</h3>
+        <button onClick={onClose} className="text-xs text-slate-400 hover:text-slate-500 font-mono">CLOSE</button>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {point.mean_value != null && (
-          <div className="bg-[#141820] rounded-lg p-3 text-center border border-[#2a3144]">
+          <div className="bg-white rounded-lg p-3 text-center border border-slate-200">
             <p className="text-[10px] text-slate-500 font-mono">Mean</p>
-            <p className="text-lg font-bold text-blue-400 font-mono">{point.mean_value}{unit}</p>
+            <p className="text-lg font-bold text-blue-600 font-mono">{point.mean_value}{unit}</p>
           </div>
         )}
         {point.min_value != null && (
-          <div className="bg-[#141820] rounded-lg p-3 text-center border border-[#2a3144]">
+          <div className="bg-white rounded-lg p-3 text-center border border-slate-200">
             <p className="text-[10px] text-slate-500 font-mono">Min</p>
-            <p className="text-lg font-bold text-emerald-400 font-mono">{point.min_value}{unit}</p>
+            <p className="text-lg font-bold text-emerald-600 font-mono">{point.min_value}{unit}</p>
           </div>
         )}
         {point.max_value != null && (
-          <div className="bg-[#141820] rounded-lg p-3 text-center border border-[#2a3144]">
+          <div className="bg-white rounded-lg p-3 text-center border border-slate-200">
             <p className="text-[10px] text-slate-500 font-mono">Max</p>
-            <p className="text-lg font-bold text-red-400 font-mono">{point.max_value}{unit}</p>
+            <p className="text-lg font-bold text-red-600 font-mono">{point.max_value}{unit}</p>
           </div>
         )}
       </div>
@@ -533,7 +533,7 @@ function DrillDownPanel({ date, data, unit, onClose }) {
         <p className="text-xs text-slate-500 mt-2 font-mono">Based on {point.n} individual test{point.n !== 1 ? "s" : ""} this month</p>
       )}
       {point.trend_value != null && (
-        <p className="text-xs text-slate-600 mt-1 font-mono">Trend line value: {point.trend_value}{unit}</p>
+        <p className="text-xs text-slate-400 mt-1 font-mono">Trend line value: {point.trend_value}{unit}</p>
       )}
     </div>
   );
@@ -542,9 +542,9 @@ function DrillDownPanel({ date, data, unit, onClose }) {
 function FullScreenModal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-8 animate-fadeIn" onClick={onClose}>
-      <div className="bg-[#1e2433] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-auto p-6 border border-[#2a3144]" onClick={e => e.stopPropagation()}>
+      <div className="bg-slate-50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-auto p-6 border border-slate-200" onClick={e => e.stopPropagation()}>
         <div className="flex justify-end mb-2">
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-sm flex items-center gap-1 font-mono">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-sm flex items-center gap-1 font-mono">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -572,7 +572,7 @@ export default function ChartArea({ chartType, chartData }) {
   const expandButton = (
     <button
       onClick={() => setFullScreen(true)}
-      className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors font-mono"
+      className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-900 transition-colors font-mono"
       title="Expand chart"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -2,8 +2,9 @@
 
 import numpy as np
 from scipy import stats as sp_stats
-from db import get_collection
-from tools.utils import fuzzy_match_name, infer_test_type_filter
+from data_access import get_tests_with_results, get_distinct_values
+from tools.utils import fuzzy_match_name, infer_test_type_filter, get_property_value
+from schema_map import get_unit
 
 
 def correlate_properties(
@@ -16,11 +17,10 @@ def correlate_properties(
     Compute Pearson correlation between two numeric properties across tests.
     Answers: 'If property X changes, does property Y tend to change too?'
     """
-    tests_col = get_collection("Tests")
     query = {}
 
     if material:
-        known = tests_col.distinct("TestParametersFlat.MATERIAL")
+        known = get_distinct_values("TestParametersFlat.MATERIAL")
         material = fuzzy_match_name(material, known)
         query["TestParametersFlat.MATERIAL"] = material
 
@@ -31,16 +31,16 @@ def correlate_properties(
         type_filter = infer_test_type_filter(property_x) or infer_test_type_filter(property_y)
         query.update(type_filter)
 
-    all_tests = list(tests_col.find(query))
+    all_tests = get_tests_with_results(query, properties=[property_x, property_y], limit=5000)
 
     # Extract paired (x, y) values — only tests that have both
     pairs = []
     for t in all_tests:
-        p = t.get("TestParametersFlat", {})
-        vx = p.get(property_x)
-        vy = p.get(property_y)
+        vx = get_property_value(t, property_x)
+        vy = get_property_value(t, property_y)
         if vx is not None and vy is not None:
             try:
+                p = t.get("TestParametersFlat", {})
                 pairs.append((float(vx), float(vy), p.get("MATERIAL", ""), p.get("Date", "")))
             except (TypeError, ValueError):
                 pass
@@ -77,7 +77,7 @@ def correlate_properties(
             f"There is a {strength} {direction} correlation between "
             f"{property_x.replace('_', ' ')} and {property_y.replace('_', ' ')} "
             f"(r={r}, p={p_value}). "
-            f"{'This is statistically meaningful — the relationship is real, not random noise.' if significant else ''}"
+            "This is statistically meaningful — the relationship is real, not random noise."
         )
         if r > 0.4:
             interpretation += f" When {property_x.replace('_', ' ')} is higher, {property_y.replace('_', ' ')} tends to be higher too."
@@ -103,13 +103,13 @@ def correlate_properties(
         {"x": round(x_max, 2), "y": round(float(np.polyval(coeffs, x_max)), 2)},
     ]
 
-    unit_x = "MPa" if "mpa" in property_x else ("J" if "_j" in property_x else "%")
-    unit_y = "MPa" if "mpa" in property_y else ("J" if "_j" in property_y else "%")
+    unit_x = get_unit(property_x)
+    unit_y = get_unit(property_y)
 
     steps = [
         f"Queried tests{f' for {material}' if material else ''} with both {property_x} and {property_y} values",
         f"Found {len(pairs)} tests with paired data",
-        f"Computed Pearson correlation coefficient using scipy.stats.pearsonr",
+        "Computed Pearson correlation coefficient using scipy.stats.pearsonr",
         f"r = {r} (p = {p_value}) — {strength} {direction} correlation",
         f"{'Statistically significant (p < 0.05)' if significant else 'Not statistically significant (p >= 0.05)'}",
     ]

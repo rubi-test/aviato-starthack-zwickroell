@@ -4,25 +4,36 @@ import difflib
 import re
 from datetime import datetime, timedelta
 
+from schema_map import STANDARD_TO_TEST_TYPE
+
 
 def parse_date(date_str: str) -> datetime:
-    """Parse date string to datetime. Supports DD.MM.YYYY and natural language."""
+    """Parse date string to datetime. Supports multiple formats found in real data."""
     if not date_str:
         raise ValueError("Empty date string")
 
     date_str = date_str.strip()
 
-    # Standard format
-    try:
-        return datetime.strptime(date_str, "%d.%m.%Y")
-    except ValueError:
-        pass
+    for fmt in (
+        "%d.%m.%Y",   # 26.11.2021
+        "%Y-%m-%d",    # 2021-11-26
+        "%d-%m-%Y",    # 17-06-2025
+        "%m/%d/%Y",    # 07/12/2023
+        "%d-%b-%y",    # 03-Jun-25
+        "%d-%b-%Y",    # 03-Jun-2025
+    ):
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            pass
 
-    # ISO format YYYY-MM-DD
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        pass
+    # M/D/YYYY or M/DD/YYYY (no leading zeros)
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", date_str)
+    if m:
+        try:
+            return datetime(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            pass
 
     raise ValueError(f"Cannot parse date: {date_str}")
 
@@ -99,15 +110,44 @@ def format_date(dt: datetime) -> str:
 
 
 def build_date_filter(date: str = None, date_from: str = None, date_to: str = None) -> dict:
-    """Build a MongoDB query fragment for date filtering on TestParametersFlat.Date."""
+    """Build a MongoDB query fragment for date filtering.
+
+    Uses _parsed_date (ISODate) when available for efficient range queries,
+    falls back to exact string match on TestParametersFlat.Date.
+    """
+    from db import is_mock
+
     filters = {}
+
     if date:
         filters["TestParametersFlat.Date"] = date
+        return filters
+
+    if is_mock():
+        # Mock data uses string dates — can't range-query efficiently
+        return filters
+
+    # Real data: use _parsed_date for range queries
+    if date_from or date_to:
+        date_range = {}
+        if date_from:
+            try:
+                date_range["$gte"] = parse_date(date_from)
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                date_range["$lte"] = parse_date(date_to)
+            except ValueError:
+                pass
+        if date_range:
+            filters["TestParametersFlat._parsed_date"] = date_range
+
     return filters
 
 
 def filter_by_date_range(tests: list[dict], date_from: str = None, date_to: str = None) -> list[dict]:
-    """Filter test documents by date range (inclusive)."""
+    """Filter test documents by date range (inclusive). Python-side fallback."""
     if not date_from and not date_to:
         return tests
 
@@ -140,6 +180,12 @@ def fuzzy_match_name(query: str, candidates: list[str], cutoff: float = 0.6) -> 
     if not query or not candidates:
         return query
 
+    # Filter out None/empty candidates (real DB can have nulls)
+    candidates = [c for c in candidates if c]
+
+    if not candidates:
+        return query
+
     query_lower = query.lower()
     candidates_lower = [c.lower() for c in candidates]
 
@@ -163,10 +209,14 @@ def fuzzy_match_name(query: str, candidates: list[str], cutoff: float = 0.6) -> 
 
 
 def extract_property_values(tests: list[dict], prop: str) -> list[float]:
-    """Extract numeric property values from TestParametersFlat, skipping missing."""
+    """Extract numeric property values from test documents, checking both
+    TestParametersFlat and computed_results (for enriched docs)."""
     values = []
     for t in tests:
         v = t.get("TestParametersFlat", {}).get(prop)
+        # Also check computed_results (enriched collection)
+        if v is None:
+            v = t.get("computed_results", {}).get(prop)
         if v is not None:
             try:
                 values.append(float(v))
@@ -175,37 +225,72 @@ def extract_property_values(tests: list[dict], prop: str) -> list[float]:
     return values
 
 
+def get_property_value(test: dict, prop: str):
+    """Get a single property value from a test document, checking both sources."""
+    v = test.get("TestParametersFlat", {}).get(prop)
+    if v is None:
+        v = test.get("computed_results", {}).get(prop)
+    return v
+
+
 PROPERTY_TEST_TYPE = {
     "tensile_strength_mpa": "tensile",
     "tensile_modulus_mpa": "tensile",
     "elongation_at_break_pct": "tensile",
     "impact_energy_j": "charpy",
+    "max_force_n": None,  # appears in multiple test types
+    "force_at_break_n": "tensile",
+    "upper_yield_point_mpa": "tensile",
+    "strain_at_max_force_pct": "tensile",
+    "nominal_strain_at_break_pct": "tensile",
+    "work_to_max_force_j": "tensile",
+    "work_to_break_j": "tensile",
+    "cross_section_mm2": None,
 }
 
 
-def infer_test_type_filter(property: str) -> dict:
-    """Return a MongoDB query fragment to filter by the test type that produces this property."""
+def infer_test_type_filter(property: str, standard: str | None = None) -> dict:
+    """Return a MongoDB query fragment to filter by the test type that produces this property.
+
+    If a standard is provided (e.g. "DIN EN ISO 527"), uses STANDARD_TO_TEST_TYPE to
+    infer the test type. Otherwise falls back to property-based inference.
+    """
+    # Standard-based inference takes priority
+    if standard:
+        for pattern, tt in STANDARD_TO_TEST_TYPE.items():
+            if pattern.lower() in standard.lower():
+                return {"TestParametersFlat.TYPE_OF_TESTING_STR": tt}
+
     test_type = PROPERTY_TEST_TYPE.get(property)
     if test_type:
         return {"TestParametersFlat.TYPE_OF_TESTING_STR": test_type}
     return {}
 
 
+def resolve_property_path(prop: str) -> str:
+    """Return the dotted MongoDB field path for a property name."""
+    from data_access import _property_field
+    return _property_field(prop)
+
+
 def test_to_summary(t: dict) -> dict:
     """Convert a test document to a flat summary dict for API responses."""
     p = t.get("TestParametersFlat", {})
+    cr = t.get("computed_results", {})
+
     return {
-        "id": t.get("_id", ""),
+        "id": str(t.get("_id", "")),
         "date": p.get("Date", ""),
         "customer": p.get("CUSTOMER", ""),
         "material": p.get("MATERIAL", ""),
         "test_type": p.get("TYPE_OF_TESTING_STR", ""),
+        "standard": p.get("STANDARD", ""),
         "machine": p.get("MACHINE", ""),
         "site": p.get("SITE", ""),
         "tester": p.get("TESTER", ""),
-        "tensile_strength_mpa": p.get("tensile_strength_mpa"),
-        "tensile_modulus_mpa": p.get("tensile_modulus_mpa"),
-        "elongation_at_break_pct": p.get("elongation_at_break_pct"),
-        "impact_energy_j": p.get("impact_energy_j"),
-        "max_force_n": p.get("max_force_n"),
+        "tensile_strength_mpa": p.get("tensile_strength_mpa") or cr.get("tensile_strength_mpa"),
+        "tensile_modulus_mpa": p.get("tensile_modulus_mpa") or cr.get("tensile_modulus_mpa"),
+        "elongation_at_break_pct": p.get("elongation_at_break_pct") or cr.get("elongation_at_break_pct"),
+        "impact_energy_j": p.get("impact_energy_j") or cr.get("impact_energy_j"),
+        "max_force_n": p.get("max_force_n") or cr.get("max_force_n"),
     }

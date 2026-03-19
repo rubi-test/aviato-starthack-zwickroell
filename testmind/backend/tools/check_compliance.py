@@ -1,8 +1,9 @@
 """Tool 7: check_compliance — Check if material test results meet a threshold guideline."""
 
 import numpy as np
-from db import get_collection
-from tools.utils import extract_property_values, fuzzy_match_name, test_to_summary
+from data_access import get_tests_with_results, get_distinct_values, get_stats_aggregation
+from tools.utils import extract_property_values, fuzzy_match_name, test_to_summary, get_property_value
+from schema_map import get_unit
 
 
 def check_compliance(
@@ -16,24 +17,28 @@ def check_compliance(
     direction='above' means the value must be >= threshold (minimum spec).
     direction='below' means the value must be <= threshold (maximum spec).
     """
-    tests_col = get_collection("Tests")
-    known = tests_col.distinct("TestParametersFlat.MATERIAL")
+    known = get_distinct_values("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
 
-    all_tests = list(tests_col.find({"TestParametersFlat.MATERIAL": material}))
+    query = {"TestParametersFlat.MATERIAL": material}
 
-    if not all_tests:
+    # Get stats via aggregation (fast)
+    stats = get_stats_aggregation(query, property)
+
+    if stats["n"] == 0:
         return {
-            "result": {"error": f"No tests found for material '{material}'."},
-            "steps": [f"Queried Tests for MATERIAL={material}", "Found 0 tests"],
+            "result": {"error": f"No values found for property '{property}' on '{material}'."},
+            "steps": [f"Queried Tests for MATERIAL={material}", f"Found 0 tests with {property}"],
         }
 
+    # Get individual values for pass/fail calculation and failed samples
+    all_tests = get_tests_with_results(query, properties=[property], limit=50000)
     values = extract_property_values(all_tests, property)
 
     if not values:
         return {
             "result": {"error": f"No values found for property '{property}' on '{material}'."},
-            "steps": [f"Found {len(all_tests)} tests but none have {property}"],
+            "steps": [f"Found tests but none have {property}"],
         }
 
     arr = np.array(values)
@@ -51,12 +56,12 @@ def check_compliance(
     pass_rate = round(100 * pass_count / total, 1)
 
     mean_val = round(float(np.mean(arr)), 1)
-    unit = "MPa" if "mpa" in property else ("J" if "_j" in property else "%")
+    unit = get_unit(property)
 
     # Get failed test summaries
     failed_tests = []
     for t in all_tests:
-        v = t.get("TestParametersFlat", {}).get(property)
+        v = get_property_value(t, property)
         if v is None:
             continue
         v = float(v)

@@ -1,7 +1,7 @@
 /**
  * Lightweight Markdown renderer — no external deps.
- * Supports: **bold**, *italic*, `code`, ### headings, - bullet lists,
- * 1. numbered lists, | tables |, --- horizontal rules, > blockquotes, line breaks.
+ * Supports: bold, italic, code, headings, bullet lists,
+ * numbered lists, tables, horizontal rules, blockquotes, line breaks.
  */
 
 function parseLine(text) {
@@ -12,9 +12,9 @@ function parseLine(text) {
   let match;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > last) parts.push(text.slice(last, match.index));
-    if (match[2]) parts.push(<strong key={match.index} className="font-semibold text-slate-100">{match[2]}</strong>);
+    if (match[2]) parts.push(<strong key={match.index} className="font-semibold text-slate-800">{match[2]}</strong>);
     else if (match[3]) parts.push(<em key={match.index}>{match[3]}</em>);
-    else if (match[4]) parts.push(<code key={match.index} className="bg-[#141820] text-blue-400 px-1 py-0.5 rounded text-[11px] font-mono border border-[#2a3144]">{match[4]}</code>);
+    else if (match[4]) parts.push(<code key={match.index} className="bg-white text-blue-600 px-1 py-0.5 rounded text-[11px] font-mono border border-slate-200">{match[4]}</code>);
     last = match.index + match[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));
@@ -44,20 +44,20 @@ export default function Markdown({ children, className = "" }) {
     const line = lines[i];
 
     if (line.startsWith("### ")) {
-      elements.push(<h3 key={i} className="text-sm font-bold text-slate-100 mt-3 mb-1">{parseLine(line.slice(4))}</h3>);
+      elements.push(<h3 key={i} className="text-sm font-bold text-slate-800 mt-3 mb-1">{parseLine(line.slice(4))}</h3>);
       i++; continue;
     }
     if (line.startsWith("## ")) {
-      elements.push(<h2 key={i} className="text-base font-bold text-slate-100 mt-3 mb-1">{parseLine(line.slice(3))}</h2>);
+      elements.push(<h2 key={i} className="text-base font-bold text-slate-800 mt-3 mb-1">{parseLine(line.slice(3))}</h2>);
       i++; continue;
     }
     if (line.startsWith("# ")) {
-      elements.push(<h1 key={i} className="text-lg font-bold text-slate-100 mt-3 mb-1">{parseLine(line.slice(2))}</h1>);
+      elements.push(<h1 key={i} className="text-lg font-bold text-slate-800 mt-3 mb-1">{parseLine(line.slice(2))}</h1>);
       i++; continue;
     }
 
     if (/^---+$/.test(line.trim())) {
-      elements.push(<hr key={i} className="my-3 border-[#2a3144]" />);
+      elements.push(<hr key={i} className="my-3 border-slate-200" />);
       i++; continue;
     }
 
@@ -68,7 +68,7 @@ export default function Markdown({ children, className = "" }) {
         i++;
       }
       elements.push(
-        <blockquote key={`bq-${i}`} className="border-l-3 border-blue-500/50 pl-3 my-2 text-slate-400 italic text-sm">
+        <blockquote key={`bq-${i}`} className="border-l-3 border-blue-500/50 pl-3 my-2 text-slate-500 italic text-sm">
           {quoteLines.map((ql, qi) => <p key={qi}>{parseLine(ql)}</p>)}
         </blockquote>
       );
@@ -90,9 +90,9 @@ export default function Markdown({ children, className = "" }) {
           <div key={`table-${i}`} className="overflow-auto my-2">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-[#141820]">
+                <tr className="bg-white">
                   {headerCells.map((cell, ci) => (
-                    <th key={ci} className="text-left px-3 py-1.5 text-xs font-semibold text-slate-400 border-b border-[#2a3144] font-mono">
+                    <th key={ci} className="text-left px-3 py-1.5 text-xs font-semibold text-slate-500 border-b border-slate-200 font-mono">
                       {parseLine(cell)}
                     </th>
                   ))}
@@ -100,9 +100,9 @@ export default function Markdown({ children, className = "" }) {
               </thead>
               <tbody>
                 {bodyRows.map((row, ri) => (
-                  <tr key={ri} className={ri % 2 === 0 ? "bg-[#1e2433]" : "bg-[#141820]"}>
+                  <tr key={ri} className={ri % 2 === 0 ? "bg-slate-50" : "bg-white"}>
                     {row.map((cell, ci) => (
-                      <td key={ci} className="px-3 py-1.5 text-slate-300 border-b border-[#2a3144] font-mono">
+                      <td key={ci} className="px-3 py-1.5 text-slate-700 border-b border-slate-200 font-mono">
                         {parseLine(cell)}
                       </td>
                     ))}
@@ -119,7 +119,7 @@ export default function Markdown({ children, className = "" }) {
     if (/^[-*]\s/.test(line)) {
       const items = [];
       while (i < lines.length && /^[-*]\s/.test(lines[i])) {
-        items.push(<li key={i} className="ml-4 list-disc text-slate-300">{parseLine(lines[i].replace(/^[-*]\s/, ""))}</li>);
+        items.push(<li key={i} className="ml-4 list-disc text-slate-700">{parseLine(lines[i].replace(/^[-*]\s/, ""))}</li>);
         i++;
       }
       elements.push(<ul key={`ul-${i}`} className="my-1 space-y-0.5">{items}</ul>);
@@ -129,7 +129,7 @@ export default function Markdown({ children, className = "" }) {
     if (/^\d+\.\s/.test(line)) {
       const items = [];
       while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
-        items.push(<li key={i} className="ml-4 list-decimal text-slate-300">{parseLine(lines[i].replace(/^\d+\.\s/, ""))}</li>);
+        items.push(<li key={i} className="ml-4 list-decimal text-slate-700">{parseLine(lines[i].replace(/^\d+\.\s/, ""))}</li>);
         i++;
       }
       elements.push(<ol key={`ol-${i}`} className="my-1 space-y-0.5">{items}</ol>);
@@ -140,7 +140,7 @@ export default function Markdown({ children, className = "" }) {
       i++; continue;
     }
 
-    elements.push(<p key={i} className="my-1 text-slate-300 leading-relaxed">{parseLine(line)}</p>);
+    elements.push(<p key={i} className="my-1 text-slate-700 leading-relaxed">{parseLine(line)}</p>);
     i++;
   }
 

@@ -74,67 +74,75 @@ def chat(req: ChatRequest):
 @app.get("/api/dashboard")
 def dashboard():
     """Dashboard stats for the home screen."""
-    from db import get_collection
-    from tools.utils import parse_date
+    from data_access import (
+        get_test_count,
+        get_distinct_values,
+        get_recent_tests,
+        get_daily_counts,
+        get_monthly_aggregation,
+        get_stats_aggregation,
+    )
+    from db import is_mock
+    from tools.utils import parse_date, test_to_summary
 
-    tests_col = get_collection("Tests")
-    all_tests = list(tests_col.find())
-
-    # Find the latest test date in DB
-    dates = []
-    for t in all_tests:
-        date_str = t.get("TestParametersFlat", {}).get("Date")
-        if date_str:
+    # Determine the reference date (latest test date)
+    if is_mock():
+        # For mock data, find the latest date
+        recent = get_recent_tests(limit=1)
+        if recent:
             try:
-                dates.append(parse_date(date_str))
-            except ValueError:
-                pass
+                latest = parse_date(recent[0].get("TestParametersFlat", {}).get("Date", ""))
+            except (ValueError, TypeError):
+                latest = datetime.now()
+        else:
+            latest = datetime.now()
+    else:
+        # Real DB: use _parsed_date sort
+        recent = get_recent_tests(limit=1)
+        if recent:
+            latest = recent[0].get("TestParametersFlat", {}).get("_parsed_date") or datetime.now()
+        else:
+            latest = datetime.now()
 
-    latest = max(dates) if dates else datetime.now()
     week_ago = latest - timedelta(days=7)
 
-    # Tests in last 7 days (relative to latest test in DB)
-    recent = [t for t in all_tests if _test_after(t, week_ago)]
+    # Tests in last 7 days
+    if is_mock():
+        # Mock: count via Python since dates are strings
+        from data_access import get_tests_with_results
+        all_recent = get_tests_with_results({}, limit=500)
+        tests_7d = sum(1 for t in all_recent if _get_date(t) >= week_ago)
+    else:
+        tests_7d = get_test_count({"TestParametersFlat._parsed_date": {"$gte": week_ago}})
 
     # Materials in DB
-    materials = set()
-    for t in all_tests:
-        m = t.get("TestParametersFlat", {}).get("MATERIAL")
-        if m:
-            materials.add(m)
+    materials = get_distinct_values("TestParametersFlat.MATERIAL")
 
-    # Anomaly detection: materials where latest test is >15% below 6-month average
-    anomalies = _detect_anomalies(all_tests, latest)
+    # Anomaly detection
+    anomalies = _detect_anomalies(latest)
 
     # Boundary risks
     boundary_risks = _get_boundary_risks()
 
     # Recent tests for table (last 8)
-    recent_sorted = sorted(all_tests, key=lambda t: _get_date(t), reverse=True)[:8]
-    recent_table = []
-    for t in recent_sorted:
-        p = t.get("TestParametersFlat", {})
-        recent_table.append({
-            "date": p.get("Date", ""),
-            "material": p.get("MATERIAL", ""),
-            "test_type": p.get("TYPE_OF_TESTING_STR", ""),
-            "machine": p.get("MACHINE", ""),
-            "site": p.get("SITE", ""),
-            "tester": p.get("TESTER", ""),
-        })
+    recent_tests = get_recent_tests(limit=8)
+    recent_table = [
+        {
+            "date": t.get("TestParametersFlat", {}).get("Date", ""),
+            "material": t.get("TestParametersFlat", {}).get("MATERIAL", ""),
+            "test_type": t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR", ""),
+            "machine": t.get("TestParametersFlat", {}).get("MACHINE", ""),
+            "site": t.get("TestParametersFlat", {}).get("SITE", ""),
+            "tester": t.get("TestParametersFlat", {}).get("TESTER", ""),
+        }
+        for t in recent_tests
+    ]
 
-    # Sparkline data: daily test counts for the last 30 days
-    sparkline_days = 14
-    sparkline = []
-    for day_offset in range(sparkline_days - 1, -1, -1):
-        day = latest - timedelta(days=day_offset)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        count = sum(1 for t in all_tests if day_start <= _get_date(t) < day_end)
-        sparkline.append(count)
+    # Sparkline data: daily test counts for the last 14 days
+    sparkline = get_daily_counts(days_back=14, reference_date=latest)
 
     return {
-        "tests_last_7_days": len(recent),
+        "tests_last_7_days": tests_7d,
         "anomalies_flagged": len(anomalies),
         "materials_in_db": len(materials),
         "boundary_risks": len(boundary_risks),
@@ -146,6 +154,12 @@ def dashboard():
 
 
 def _get_date(t: dict) -> datetime:
+    """Extract a datetime from a test document, trying _parsed_date first."""
+    # Enriched/real data
+    pd = t.get("TestParametersFlat", {}).get("_parsed_date")
+    if isinstance(pd, datetime):
+        return pd
+    # Fallback: parse string date
     from tools.utils import parse_date
     try:
         return parse_date(t.get("TestParametersFlat", {}).get("Date", ""))
@@ -153,46 +167,32 @@ def _get_date(t: dict) -> datetime:
         return datetime.min
 
 
-def _test_after(t: dict, cutoff: datetime) -> bool:
-    return _get_date(t) >= cutoff
-
-
-def _detect_anomalies(all_tests: list[dict], latest: datetime) -> list[dict]:
+def _detect_anomalies(latest: datetime) -> list[dict]:
     """Find materials where latest tensile_strength_mpa is >15% below 6-month average."""
-    import numpy as np
-    from tools.utils import parse_date
+    from data_access import get_distinct_values, get_monthly_aggregation, get_stats_aggregation
 
     six_months_ago = latest - timedelta(days=180)
     anomalies = []
 
-    materials = set(t.get("TestParametersFlat", {}).get("MATERIAL") for t in all_tests)
-    materials.discard(None)
+    materials = get_distinct_values("TestParametersFlat.MATERIAL")
 
-    for mat in sorted(materials):
-        mat_tests = [t for t in all_tests
-                     if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-                     and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == "tensile"]
+    for mat in sorted(m for m in materials if m):
+        query = {
+            "TestParametersFlat.MATERIAL": mat,
+            "TestParametersFlat.TYPE_OF_TESTING_STR": "tensile",
+        }
 
-        if len(mat_tests) < 5:
+        stats = get_stats_aggregation(query, "tensile_strength_mpa")
+        if stats["n"] < 5:
             continue
 
-        # Get 6-month values
-        recent_vals = []
-        all_vals = []
-        for t in mat_tests:
-            val = t.get("TestParametersFlat", {}).get("tensile_strength_mpa")
-            if val is None:
-                continue
-            dt = _get_date(t)
-            all_vals.append(val)
-            if dt >= six_months_ago:
-                recent_vals.append((dt, val))
-
-        if not recent_vals or not all_vals:
+        # Get recent monthly data for comparison
+        time_series = get_monthly_aggregation(query, "tensile_strength_mpa", months_back=6)
+        if not time_series:
             continue
 
-        avg_6m = np.mean([v for _, v in recent_vals])
-        latest_val = max(recent_vals, key=lambda x: x[0])[1]
+        avg_6m = sum(pt["mean_value"] for pt in time_series) / len(time_series)
+        latest_val = time_series[-1]["mean_value"]
 
         if latest_val < avg_6m * 0.85:
             pct_below = round((1 - latest_val / avg_6m) * 100)
@@ -206,22 +206,30 @@ def _detect_anomalies(all_tests: list[dict], latest: datetime) -> list[dict]:
 
 
 def _get_boundary_risks() -> list[dict]:
-    """Check boundary risks for known materials."""
+    """Check boundary risks for materials with enough data."""
     from tools.boundary_forecast import boundary_forecast
+    from data_access import get_distinct_values
 
     risks = []
+    materials = get_distinct_values("TestParametersFlat.MATERIAL")
 
-    # Check FancyPlast 42 tensile modulus approaching 10 MPa
-    result = boundary_forecast("FancyPlast 42", "tensile_modulus_mpa", 10.0, months_history=36)
-    r = result["result"]
-    if r.get("will_violate"):
-        risks.append({
-            "material": "FancyPlast 42",
-            "property": "tensile_modulus_mpa",
-            "boundary": 10.0,
-            "current": r.get("current_value"),
-            "eta_months": r.get("months_until_violation"),
-        })
+    # Check top materials for boundary risks on tensile modulus
+    for mat in sorted(m for m in materials if m):
+        try:
+            result = boundary_forecast(mat, "tensile_modulus_mpa", 10.0, months_history=36)
+            r = result["result"]
+            if r.get("will_violate"):
+                risks.append({
+                    "material": mat,
+                    "property": "tensile_modulus_mpa",
+                    "boundary": 10.0,
+                    "current": r.get("current_value"),
+                    "eta_months": r.get("months_until_violation"),
+                })
+        except Exception:
+            pass
+        if len(risks) >= 5:
+            break
 
     return risks
 
@@ -232,17 +240,11 @@ def insights():
     Proactive AI insights — auto-scans all materials for trends and risks,
     returns top insights ranked by severity without the user needing to ask.
     """
-    import numpy as np
-    from db import get_collection
+    from data_access import get_distinct_values
     from tools.trend_analysis import trend_analysis
     from tools.boundary_forecast import boundary_forecast
 
-    tests_col = get_collection("Tests")
-    materials = sorted(set(
-        t.get("TestParametersFlat", {}).get("MATERIAL")
-        for t in tests_col.find()
-        if t.get("TestParametersFlat", {}).get("MATERIAL")
-    ))
+    materials = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m)
 
     found_insights = []
 
@@ -313,76 +315,50 @@ def health_scores():
     Each factor is scored 0-100, then weighted: stability 40%, variability 30%, boundary 30%.
     """
     import numpy as np
-    from db import get_collection
-    from tools.utils import parse_date, extract_property_values
+    from data_access import (
+        get_distinct_values,
+        get_stats_aggregation,
+        get_monthly_aggregation,
+        get_tests_with_results,
+    )
+    from tools.utils import extract_property_values
 
-    tests_col = get_collection("Tests")
-    all_tests = list(tests_col.find())
-
-    materials = sorted(set(
-        t.get("TestParametersFlat", {}).get("MATERIAL")
-        for t in all_tests
-        if t.get("TestParametersFlat", {}).get("MATERIAL")
-    ))
+    materials = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m)
 
     prop = "tensile_strength_mpa"
     results = []
 
     for mat in materials:
-        mat_tests = [
-            t for t in all_tests
-            if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-            and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == "tensile"
-        ]
+        query = {
+            "TestParametersFlat.MATERIAL": mat,
+            "TestParametersFlat.TYPE_OF_TESTING_STR": "tensile",
+        }
 
-        vals = [
-            t["TestParametersFlat"][prop]
-            for t in mat_tests
-            if t.get("TestParametersFlat", {}).get(prop) is not None
-        ]
-
-        if len(vals) < 5:
+        stats = get_stats_aggregation(query, prop)
+        if stats["n"] < 5:
             continue
 
-        arr = np.array(vals, dtype=float)
-        mean = float(np.mean(arr))
-        std = float(np.std(arr, ddof=1)) if len(arr) > 1 else 0
+        mean = stats["mean"]
+        std = stats["std"]
 
         # --- Trend stability score (0-100) ---
-        # Get monthly means, fit linear regression, score based on slope magnitude
-        dated = []
-        for t in mat_tests:
-            p = t.get("TestParametersFlat", {})
-            v = p.get(prop)
-            d = p.get("Date")
-            if v is not None and d:
-                try:
-                    dt = parse_date(d)
-                    dated.append((dt, float(v)))
-                except (ValueError, TypeError):
-                    pass
-        dated.sort(key=lambda x: x[0])
-
         trend_score = 80  # default if not enough data
         slope_val = 0
-        if len(dated) >= 6:
-            x = np.arange(len(dated))
-            y = np.array([v for _, v in dated])
+        time_series = get_monthly_aggregation(query, prop, months_back=36)
+        if len(time_series) >= 6:
+            x = np.arange(len(time_series))
+            y = np.array([pt["mean_value"] for pt in time_series])
             coeffs = np.polyfit(x, y, 1)
             slope_val = float(coeffs[0])
-            # Normalize: slope of 0 = 100, slope of ±1 = 0
             trend_score = max(0, min(100, 100 - abs(slope_val) * 100))
 
         # --- Variability score (0-100) ---
-        cv = (std / mean * 100) if mean > 0 else 0  # coefficient of variation %
-        # CV of 0% = 100, CV of 20%+ = 0
+        cv = (std / mean * 100) if mean > 0 else 0
         variability_score = max(0, min(100, 100 - cv * 5))
 
         # --- Boundary proximity score (0-100) ---
-        # How far is the mean from a critical lower boundary (e.g. 10 MPa for modulus)
-        # For tensile strength, use 80% of the overall mean as a "soft boundary"
         soft_boundary = mean * 0.7
-        min_val = float(np.min(arr))
+        min_val = stats["min"]
         margin = (min_val - soft_boundary) / (mean - soft_boundary) if (mean - soft_boundary) > 0 else 1
         boundary_score = max(0, min(100, margin * 100))
 
@@ -405,7 +381,7 @@ def health_scores():
                 "std": round(std, 2),
                 "cv_pct": round(cv, 1),
                 "slope_per_test": round(slope_val, 4),
-                "n_tests": len(vals),
+                "n_tests": stats["n"],
             },
         })
 
@@ -414,30 +390,42 @@ def health_scores():
 
 
 @app.get("/api/explore")
-def explore(material: str, property: str = "tensile_strength_mpa"):
+def explore(material: str, property: str = "max_force_n"):
     """
     Interactive data explorer — returns time series + stats for a material/property combo.
     Used by the ExploreScreen for real-time interactive charting.
     """
     import numpy as np
-    from db import get_collection
-    from tools.utils import fuzzy_match_name, parse_date, infer_test_type_filter, extract_property_values
+    from data_access import (
+        get_distinct_values,
+        get_monthly_aggregation,
+        get_stats_aggregation,
+        get_tests_with_results,
+    )
+    from tools.utils import fuzzy_match_name, infer_test_type_filter, get_property_value
+    from schema_map import get_unit
 
-    tests_col = get_collection("Tests")
-    known = tests_col.distinct("TestParametersFlat.MATERIAL")
+    known = get_distinct_values("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
 
     query = {"TestParametersFlat.MATERIAL": material, **infer_test_type_filter(property)}
-    all_tests = list(tests_col.find(query))
 
-    # Extract dated values
+    # Monthly aggregation via data_access (efficient)
+    time_series = get_monthly_aggregation(query, property, months_back=120)
+
+    # Stats via aggregation
+    stats = get_stats_aggregation(query, property)
+
+    # Individual tests (limited for scatter plot)
+    individual_docs = get_tests_with_results(query, properties=[property], limit=2000, sort_by_date=True)
     dated_values = []
-    for t in all_tests:
+    for t in individual_docs:
         p = t.get("TestParametersFlat", {})
-        date_str = p.get("Date")
-        val = p.get(property)
+        date_str = p.get("Date", "")
+        val = get_property_value(t, property)
         if date_str and val is not None:
             try:
+                from tools.utils import parse_date
                 dt = parse_date(date_str)
                 dated_values.append({
                     "date": date_str,
@@ -447,43 +435,14 @@ def explore(material: str, property: str = "tensile_strength_mpa"):
                     "machine": p.get("MACHINE", ""),
                     "site": p.get("SITE", ""),
                     "tester": p.get("TESTER", ""),
-                    "test_id": t.get("_id", ""),
+                    "test_id": str(t.get("_id", "")),
                 })
             except (ValueError, TypeError):
                 pass
 
     dated_values.sort(key=lambda x: x["date_iso"])
 
-    # Monthly aggregation
-    monthly = {}
-    for dv in dated_values:
-        key = dv["month"]
-        monthly.setdefault(key, []).append(dv["value"])
-
-    time_series = []
-    for key in sorted(monthly.keys()):
-        vals = monthly[key]
-        arr = np.array(vals)
-        time_series.append({
-            "date": key,
-            "mean_value": round(float(np.mean(arr)), 2),
-            "min_value": round(float(np.min(arr)), 2),
-            "max_value": round(float(np.max(arr)), 2),
-            "n": len(vals),
-        })
-
-    # Overall stats
-    all_vals = [dv["value"] for dv in dated_values]
-    arr = np.array(all_vals) if all_vals else np.array([0])
-    stats = {
-        "n": len(all_vals),
-        "mean": round(float(np.mean(arr)), 2),
-        "std": round(float(np.std(arr, ddof=1)) if len(arr) > 1 else 0, 2),
-        "min": round(float(np.min(arr)), 2),
-        "max": round(float(np.max(arr)), 2),
-    }
-
-    # Trend line
+    # Trend line on monthly data
     slope = 0
     intercept = 0
     r_squared = 0
@@ -500,7 +459,7 @@ def explore(material: str, property: str = "tensile_strength_mpa"):
         for i, pt in enumerate(time_series):
             pt["trend_value"] = round(float(intercept + slope * i), 2)
 
-    unit = "MPa" if "mpa" in property else ("J" if "_j" in property else "%")
+    unit = get_unit(property)
 
     return {
         "material": material,
@@ -527,21 +486,21 @@ class GraphBuilderRequest(BaseModel):
 def graph_builder(req: GraphBuilderRequest):
     """
     AI-powered graph builder — interprets natural language requests and returns
-    chart configuration + data. Supports incremental updates via current_spec:
-    "add X", "remove X", "change to bar chart", etc.
+    chart configuration + data. Supports incremental updates via current_spec.
     """
     import numpy as np
-    from db import get_collection
-
-    tests_col = get_collection("Tests")
-    all_tests = list(tests_col.find())
+    from data_access import (
+        get_distinct_values,
+        get_monthly_aggregation,
+        get_stats_aggregation,
+        get_tests_with_results,
+        get_grouped_counts,
+    )
+    from tools.utils import fuzzy_match_name, get_property_value
+    from schema_map import get_unit
 
     # Available materials and properties
-    materials = sorted(set(
-        t.get("TestParametersFlat", {}).get("MATERIAL")
-        for t in all_tests
-        if t.get("TestParametersFlat", {}).get("MATERIAL")
-    ))
+    materials = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m)
 
     properties = [
         "tensile_strength_mpa", "tensile_modulus_mpa",
@@ -555,20 +514,8 @@ def graph_builder(req: GraphBuilderRequest):
         "max_force_n": "Max Force (N)",
     }
 
-    machines = sorted(set(
-        t.get("TestParametersFlat", {}).get("MACHINE")
-        for t in all_tests
-        if t.get("TestParametersFlat", {}).get("MACHINE")
-    ))
-
-    test_types_set = sorted(set(
-        t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR")
-        for t in all_tests
-        if t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR")
-    ))
-
     prompt_lower = req.prompt.lower()
-    spec = req.current_spec  # The existing graph spec, if any
+    spec = req.current_spec
 
     # ─── Detect modification intent ────────────────────────────────────────
     is_add = any(w in prompt_lower for w in ["add ", "also ", "include ", "overlay ", "plus ", "and also", "additionally", "as well", "too", "along with"])
@@ -578,7 +525,6 @@ def graph_builder(req: GraphBuilderRequest):
     has_spec = spec is not None and not is_clear
 
     # ─── Simple NLP parser to extract intent ───────────────────────────────
-    # Determine chart type from prompt
     prompt_chart_type = None
     if any(w in prompt_lower for w in ["scatter", "correlation", "vs", "versus"]):
         prompt_chart_type = "scatter"
@@ -591,10 +537,10 @@ def graph_builder(req: GraphBuilderRequest):
     elif any(w in prompt_lower for w in ["line", "trend", "over time", "time series"]):
         prompt_chart_type = "line"
 
-    # Find mentioned materials in this prompt
+    # Find mentioned materials
     prompt_materials = [m for m in materials if m.lower() in prompt_lower]
 
-    # Find mentioned properties in this prompt
+    # Find mentioned properties
     prop_aliases = {
         "tensile strength": "tensile_strength_mpa",
         "tensile modulus": "tensile_modulus_mpa",
@@ -615,33 +561,25 @@ def graph_builder(req: GraphBuilderRequest):
             prompt_props.append(prop)
 
     # ─── Resolve final spec by merging with current_spec ───────────────────
-    # Determine if this is a modification of existing graph or a fresh request
     is_modification = has_spec and (is_add or is_remove or is_change_type)
-    # A prompt with a chart type + materials + properties is a full fresh request
-    # (e.g. "scatter plot of tensile strength vs elongation for Hostacomp G2")
     is_full_fresh = prompt_chart_type and prompt_materials and prompt_props
 
     if has_spec and not is_clear and not is_full_fresh:
-        # We have an existing spec — modify it
         existing_materials = spec.get("materials", [])
         existing_props = spec.get("properties", ["tensile_strength_mpa"])
         chart_type = prompt_chart_type or spec.get("chart_type", "line")
 
-        # Resolve materials
         if is_add and prompt_materials:
             mentioned_materials = list(dict.fromkeys(existing_materials + prompt_materials))
         elif is_remove and prompt_materials:
             mentioned_materials = [m for m in existing_materials if m not in prompt_materials]
             if not mentioned_materials:
-                mentioned_materials = existing_materials  # Don't remove everything
+                mentioned_materials = existing_materials
         elif prompt_materials and not is_add and not is_remove:
-            # Mentioned materials without add/remove — replace
             mentioned_materials = prompt_materials
         else:
-            # No materials mentioned — keep existing
             mentioned_materials = existing_materials
 
-        # Resolve properties
         if is_add and prompt_props:
             mentioned_props = list(dict.fromkeys(existing_props + prompt_props))
         elif is_remove and prompt_props:
@@ -649,26 +587,20 @@ def graph_builder(req: GraphBuilderRequest):
             if not mentioned_props:
                 mentioned_props = existing_props
         elif prompt_props:
-            # Mentioned properties without add/remove — replace
             mentioned_props = prompt_props
         else:
-            # No properties mentioned — keep existing
             mentioned_props = existing_props
     else:
-        # Fresh graph (no spec, cleared, or full fresh request)
         chart_type = prompt_chart_type or "line"
         mentioned_materials = prompt_materials if prompt_materials else materials
         mentioned_props = prompt_props if prompt_props else ["tensile_strength_mpa"]
 
-    # Infer test type from property
     def test_type_for_prop(prop):
         if "impact" in prop or "charpy" in prop.lower():
             return "charpy"
         return "tensile"
 
-    # ─── Build data based on chart type ────────────────────────────────────
-    from tools.utils import parse_date
-
+    # ─── Build data based on chart type (using data_access) ────────────────
     series = []
     explanation = ""
     x_label = ""
@@ -676,7 +608,6 @@ def graph_builder(req: GraphBuilderRequest):
     title = ""
 
     if chart_type == "scatter" and len(mentioned_props) >= 2:
-        # Scatter: prop X vs prop Y
         prop_x = mentioned_props[0]
         prop_y = mentioned_props[1]
         x_label = property_labels.get(prop_x, prop_x)
@@ -685,48 +616,48 @@ def graph_builder(req: GraphBuilderRequest):
 
         for mat in mentioned_materials:
             tt = test_type_for_prop(prop_x)
-            mat_tests = [t for t in all_tests
-                        if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-                        and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt]
+            query = {
+                "TestParametersFlat.MATERIAL": mat,
+                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
+            }
+            tests = get_tests_with_results(query, properties=[prop_x, prop_y], limit=2000)
             points = []
-            for t in mat_tests:
-                p = t.get("TestParametersFlat", {})
-                vx = p.get(prop_x)
-                vy = p.get(prop_y)
+            for t in tests:
+                vx = get_property_value(t, prop_x)
+                vy = get_property_value(t, prop_y)
                 if vx is not None and vy is not None:
-                    points.append({"x": round(float(vx), 2), "y": round(float(vy), 2)})
+                    try:
+                        points.append({"x": round(float(vx), 2), "y": round(float(vy), 2)})
+                    except (TypeError, ValueError):
+                        pass
             if points:
                 series.append({"name": mat, "data": points})
 
         explanation = f"Scatter plot of {x_label} vs {y_label} for {', '.join(mentioned_materials)}. Each point represents one test."
 
     elif chart_type == "bar":
-        # Bar: compare materials on a property
         prop = mentioned_props[0]
         title = f"{y_label} by Material"
         x_label = "Material"
         bar_data = []
         for mat in mentioned_materials:
             tt = test_type_for_prop(prop)
-            vals = [
-                float(t["TestParametersFlat"][prop])
-                for t in all_tests
-                if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-                and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt
-                and t.get("TestParametersFlat", {}).get(prop) is not None
-            ]
-            if vals:
+            query = {
+                "TestParametersFlat.MATERIAL": mat,
+                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
+            }
+            stats = get_stats_aggregation(query, prop)
+            if stats["n"] > 0:
                 bar_data.append({
                     "name": mat,
-                    "mean": round(float(np.mean(vals)), 2),
-                    "std": round(float(np.std(vals, ddof=1)) if len(vals) > 1 else 0, 2),
-                    "n": len(vals),
+                    "mean": stats["mean"],
+                    "std": stats["std"],
+                    "n": stats["n"],
                 })
         series = [{"name": "comparison", "data": bar_data}]
         explanation = f"Bar chart comparing {y_label} across {len(mentioned_materials)} materials. Error bars show ±1 standard deviation."
 
     elif chart_type == "histogram":
-        # Histogram: distribution of a property
         prop = mentioned_props[0]
         title = f"Distribution of {y_label}"
         x_label = y_label
@@ -734,14 +665,13 @@ def graph_builder(req: GraphBuilderRequest):
         all_vals = []
         for mat in mentioned_materials:
             tt = test_type_for_prop(prop)
-            vals = [
-                float(t["TestParametersFlat"][prop])
-                for t in all_tests
-                if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-                and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt
-                and t.get("TestParametersFlat", {}).get(prop) is not None
-            ]
-            all_vals.extend(vals)
+            query = {
+                "TestParametersFlat.MATERIAL": mat,
+                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
+            }
+            tests = get_tests_with_results(query, properties=[prop], limit=5000)
+            from tools.utils import extract_property_values
+            all_vals.extend(extract_property_values(tests, prop))
 
         if all_vals:
             arr = np.array(all_vals)
@@ -758,53 +688,58 @@ def graph_builder(req: GraphBuilderRequest):
         explanation = f"Histogram showing the distribution of {property_labels.get(prop, prop)} across {len(all_vals)} tests."
 
     elif chart_type == "pie":
-        # Pie: test counts by material or test type
         title = "Test Distribution"
         if any(w in prompt_lower for w in ["type", "test type", "testing"]):
-            pie_data = {}
-            for t in all_tests:
-                tt = t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR", "unknown")
-                pie_data[tt] = pie_data.get(tt, 0) + 1
-            series = [{"name": "by_type", "data": [{"name": k, "value": v} for k, v in sorted(pie_data.items())]}]
-            explanation = f"Pie chart showing test distribution by test type across {sum(pie_data.values())} total tests."
+            grouped = get_grouped_counts("TestParametersFlat.TYPE_OF_TESTING_STR")
+            known = [g for g in grouped if g["name"] != "unknown"]
+            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
+            series = [{"name": "by_type", "data": [{"name": g["name"], "value": g["count"]} for g in known]}]
+            total = sum(g["count"] for g in known)
+            explanation = f"Pie chart showing test distribution by test type across {total:,} tests."
+            if excluded:
+                explanation += f" ({excluded:,} tests with no test type excluded.)"
+        elif any(w in prompt_lower for w in ["standard", "norm", "iso", "din", "astm"]):
+            grouped = get_grouped_counts("TestParametersFlat.STANDARD")
+            known = [g for g in grouped if g["name"] != "unknown"]
+            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
+            series = [{"name": "by_standard", "data": [{"name": g["name"], "value": g["count"]} for g in known[:15]]}]
+            total = sum(g["count"] for g in known)
+            explanation = f"Pie chart showing test distribution by standard across {total:,} tests (top 15 shown)."
+            if excluded:
+                explanation += f" ({excluded:,} tests with no standard excluded.)"
+        elif any(w in prompt_lower for w in ["customer", "company"]):
+            grouped = get_grouped_counts("TestParametersFlat.CUSTOMER")
+            known = [g for g in grouped if g["name"] != "unknown"]
+            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
+            series = [{"name": "by_customer", "data": [{"name": g["name"], "value": g["count"]} for g in known[:15]]}]
+            total = sum(g["count"] for g in known)
+            explanation = f"Pie chart showing test distribution by customer across {total:,} tests (top 15 shown)."
+            if excluded:
+                explanation += f" ({excluded:,} tests with no customer excluded.)"
         else:
-            pie_data = {}
-            for t in all_tests:
-                m = t.get("TestParametersFlat", {}).get("MATERIAL", "unknown")
-                pie_data[m] = pie_data.get(m, 0) + 1
-            series = [{"name": "by_material", "data": [{"name": k, "value": v} for k, v in sorted(pie_data.items())]}]
-            explanation = f"Pie chart showing test distribution by material across {sum(pie_data.values())} total tests."
+            grouped = get_grouped_counts("TestParametersFlat.MATERIAL")
+            known = [g for g in grouped if g["name"] != "unknown"]
+            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
+            series = [{"name": "by_material", "data": [{"name": g["name"], "value": g["count"]} for g in known]}]
+            total = sum(g["count"] for g in known)
+            explanation = f"Pie chart showing test distribution by material across {total:,} tests."
+            if excluded:
+                explanation += f" ({excluded:,} tests with no material field excluded.)"
 
     else:
-        # Line: time series
+        # Line: time series via monthly aggregation
         prop = mentioned_props[0]
         title = f"{y_label} Over Time"
         x_label = "Month"
 
         for mat in mentioned_materials:
             tt = test_type_for_prop(prop)
-            mat_tests = [t for t in all_tests
-                        if t.get("TestParametersFlat", {}).get("MATERIAL") == mat
-                        and t.get("TestParametersFlat", {}).get("TYPE_OF_TESTING_STR") == tt]
-
-            monthly = {}
-            for t in mat_tests:
-                p = t.get("TestParametersFlat", {})
-                val = p.get(prop)
-                date_str = p.get("Date")
-                if val is not None and date_str:
-                    try:
-                        dt = parse_date(date_str)
-                        key = f"{dt.year}-{dt.month:02d}"
-                        monthly.setdefault(key, []).append(float(val))
-                    except (ValueError, TypeError):
-                        pass
-
-            points = []
-            for key in sorted(monthly.keys()):
-                vals = monthly[key]
-                points.append({"x": key, "y": round(float(np.mean(vals)), 2), "n": len(vals)})
-
+            query = {
+                "TestParametersFlat.MATERIAL": mat,
+                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
+            }
+            time_series = get_monthly_aggregation(query, prop, months_back=120)
+            points = [{"x": pt["date"], "y": pt["mean_value"], "n": pt["n"]} for pt in time_series]
             if points:
                 series.append({"name": mat, "data": points})
 
@@ -813,18 +748,17 @@ def graph_builder(req: GraphBuilderRequest):
     # Check if we actually have data
     has_data = any(s.get("data") for s in series)
     if not has_data:
-        # Can't build this graph — explain why and suggest alternatives
         suggestions = []
         if not mentioned_materials:
-            suggestions.append("Specify a material (e.g., FancyPlast 42, UltraPlast 99)")
+            suggestions.append("Specify a material (e.g., Steel, FEP, Spur+ 1015)")
         if chart_type == "scatter" and len(mentioned_props) < 2:
             suggestions.append("For scatter plots, mention two properties (e.g., 'tensile strength vs elongation')")
-        suggestions.append(f"Available materials: {', '.join(materials)}")
+        suggestions.append(f"Available materials: {', '.join(materials[:10])}")
         suggestions.append(f"Available properties: {', '.join(property_labels.values())}")
 
         return {
             "success": False,
-            "message": f"I couldn't build that graph — no matching data found for your request.",
+            "message": "I couldn't build that graph — no matching data found for your request.",
             "suggestions": suggestions,
             "available": {
                 "materials": materials,
@@ -834,7 +768,6 @@ def graph_builder(req: GraphBuilderRequest):
             },
         }
 
-    # Build the resolved spec so the frontend can track state
     resolved_spec = {
         "chart_type": chart_type,
         "materials": mentioned_materials,
@@ -858,3 +791,29 @@ def graph_builder(req: GraphBuilderRequest):
             "chart_types": ["line", "bar", "scatter", "histogram", "pie"],
         },
     }
+
+
+@app.get("/api/standards")
+def standards():
+    """List distinct standards with test counts."""
+    from data_access import get_grouped_counts
+    from schema_map import STANDARD_TO_TEST_TYPE
+
+    grouped = get_grouped_counts("TestParametersFlat.STANDARD")
+
+    result = []
+    for g in grouped:
+        std_name = g["name"]
+        test_type = None
+        # Match against known standards
+        for pattern, tt in STANDARD_TO_TEST_TYPE.items():
+            if pattern.lower() in std_name.lower():
+                test_type = tt
+                break
+        result.append({
+            "standard": std_name,
+            "count": g["count"],
+            "test_type": test_type,
+        })
+
+    return {"standards": result}

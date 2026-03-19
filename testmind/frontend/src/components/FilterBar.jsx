@@ -1,11 +1,11 @@
 import { useState } from "react";
 
 const MATERIALS = [
-  "FancyPlast 42", "UltraPlast 99", "Hostacomp G2",
-  "Stardust", "FancyPlast 84", "NovaTex 10",
+  "Steel", "FEP", "Spur+ 1015",
+  "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
 ];
 
-const TEST_TYPES = ["tensile", "compression", "charpy"];
+const TEST_TYPES = ["tensile", "compression", "flexure"];
 
 const DATE_RANGES = [
   { label: "3M", value: "last 3 months" },
@@ -50,7 +50,7 @@ export default function FilterBar({ onFilter }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
         </svg>
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">Filters</span>
-        <span className="text-xs text-slate-600 ml-auto font-mono">Build a query</span>
+        <span className="text-xs text-slate-400 ml-auto font-mono">Build a query</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -62,7 +62,7 @@ export default function FilterBar({ onFilter }) {
               className={`px-2.5 py-1 rounded text-xs font-mono transition-all ${
                 selectedMaterials.includes(m)
                   ? "bg-blue-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"
               }`}
             >
               {m}
@@ -70,7 +70,7 @@ export default function FilterBar({ onFilter }) {
           ))}
         </div>
 
-        <span className="text-slate-700">|</span>
+        <span className="text-slate-200">|</span>
 
         <div className="flex gap-1.5">
           {TEST_TYPES.map((t) => (
@@ -80,7 +80,7 @@ export default function FilterBar({ onFilter }) {
               className={`px-2.5 py-1 rounded text-xs font-mono uppercase transition-all ${
                 selectedTypes.includes(t)
                   ? "bg-purple-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"
               }`}
             >
               {t}
@@ -88,7 +88,7 @@ export default function FilterBar({ onFilter }) {
           ))}
         </div>
 
-        <span className="text-slate-700">|</span>
+        <span className="text-slate-200">|</span>
 
         <div className="flex gap-1.5">
           {DATE_RANGES.map((d) => (
@@ -98,7 +98,7 @@ export default function FilterBar({ onFilter }) {
               className={`px-2.5 py-1 rounded text-xs font-mono transition-all ${
                 dateRange === d.value
                   ? "bg-emerald-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"
               }`}
             >
               {d.label}
