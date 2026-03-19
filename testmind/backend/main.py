@@ -261,9 +261,10 @@ def insights():
                         "severity": severity,
                         "material": mat,
                         "property": "tensile_strength_mpa",
+                        "analysis_window_months": 18,
                         "title": f"{mat} tensile strength declining",
                         "detail": f"Dropping ~{abs(slope):.2f} MPa/month (R²={r2:.2f})",
-                        "action": f"Is {mat} tensile strength degrading?",
+                        "action": f"Is {mat} tensile strength degrading based on the last 18 months?",
                         "sort_key": abs(slope) * r2,
                     })
         except Exception:
@@ -282,9 +283,10 @@ def insights():
                     "severity": severity,
                     "material": mat,
                     "property": "tensile_modulus_mpa",
+                    "analysis_window_months": 36,
                     "title": f"{mat} modulus approaching limit",
                     "detail": f"Will cross 10 MPa boundary in ~{eta} months",
-                    "action": f"Will {mat} tensile modulus violate 10 MPa boundary?",
+                    "action": f"Will {mat} tensile modulus violate 10 MPa boundary based on the last 36 months?",
                     "sort_key": 24 - eta,
                 })
         except Exception:

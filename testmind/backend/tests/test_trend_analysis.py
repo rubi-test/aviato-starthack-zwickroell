@@ -78,6 +78,8 @@ class TestTrendAnalysis:
         result = _run_trend(col, property="tensile_strength_mpa", material="M", months_back=12)
         r = result["result"]
         if "error" not in r:
+            assert "analysis_window_months" in r
+            assert r["analysis_window_months"] == 12
             assert "time_series" in r
             assert "slope_per_month" in r
             assert "r_squared" in r

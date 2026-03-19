@@ -99,6 +99,11 @@ export default function ResultsPanel({ response, onFollowUp }) {
           {chart_data.r_squared != null && (
             <span className="text-[10px] bg-purple-900/30 text-purple-400 px-2.5 py-1 rounded border border-purple-800/40 font-mono">R²={chart_data.r_squared}</span>
           )}
+          {chart_data.analysis_window_months != null && (
+            <span className="text-[10px] bg-sky-900/30 text-sky-400 px-2.5 py-1 rounded border border-sky-800/40 font-mono">
+              WINDOW: LAST {chart_data.analysis_window_months}MO
+            </span>
+          )}
           {chart_data.pass_rate_pct != null && (
             <span className={`text-[10px] px-2.5 py-1 rounded border font-mono font-semibold ${
               chart_data.pass_rate_pct >= 95 ? "bg-emerald-900/30 text-emerald-400 border-emerald-800/40" :

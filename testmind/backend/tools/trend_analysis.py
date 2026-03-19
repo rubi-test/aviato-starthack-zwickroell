@@ -127,6 +127,7 @@ def trend_analysis(
         "result": {
             "material": material,
             "property": property,
+            "analysis_window_months": months_back,
             "time_series": time_series,
             "slope_per_month": round(float(slope), 3),
             "r_squared": round(float(r_squared), 3),

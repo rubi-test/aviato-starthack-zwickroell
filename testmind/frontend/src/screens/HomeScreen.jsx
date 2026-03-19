@@ -261,6 +261,9 @@ export default function HomeScreen({ onNavigateToChat }) {
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {insights.map((insight, i) => (
+                    (() => {
+                      const windowMonths = insight.analysis_window_months ?? (insight.type === "trend" ? 18 : insight.type === "boundary" ? 36 : null);
+                      return (
                     <button
                       key={i}
                       onClick={() => handleNavigate(insight.action)}
@@ -282,14 +285,26 @@ export default function HomeScreen({ onNavigateToChat }) {
                           >
                             {insight.severity}
                           </span>
+                          {windowMonths != null && (
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1.5 ml-1 font-mono bg-cyan-900/50 text-cyan-300 border border-cyan-700/50">
+                              Last {windowMonths}mo
+                            </span>
+                          )}
                           <p className="text-sm font-semibold text-slate-200">{insight.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{insight.detail}</p>
+                          <p className="text-xs text-slate-300 mt-0.5">{insight.detail}</p>
+                          {windowMonths != null && (
+                            <p className="text-[10px] text-slate-500 mt-1 font-mono uppercase tracking-wide">
+                              Analysis window: last {windowMonths} months
+                            </p>
+                          )}
                         </div>
                         <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                     </button>
+                      );
+                    })()
                   ))}
                 </div>
               )}

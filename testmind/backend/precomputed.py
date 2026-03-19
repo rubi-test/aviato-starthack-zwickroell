@@ -89,9 +89,9 @@ def _charpy_master() -> dict:
     }
 
 
-def _summarize_fp42() -> dict:
+def _summarize_material(material: str) -> dict:
     from tools.summarize_material import summarize_material_properties
-    result = summarize_material_properties("FancyPlast 42")
+    result = summarize_material_properties(material)
     r = result["result"]
     return {
         "answer": r.get("summary_text", "Summary complete."),
@@ -101,6 +101,30 @@ def _summarize_fp42() -> dict:
         "chart_type": "table",
         "chart_data": r,
     }
+
+
+def _summarize_fp42() -> dict:
+    return _summarize_material("FancyPlast 42")
+
+
+def _summarize_ultraplast99() -> dict:
+    return _summarize_material("UltraPlast 99")
+
+
+def _summarize_hostacomp_g2() -> dict:
+    return _summarize_material("Hostacomp G2")
+
+
+def _summarize_stardust() -> dict:
+    return _summarize_material("Stardust")
+
+
+def _summarize_fancyplast84() -> dict:
+    return _summarize_material("FancyPlast 84")
+
+
+def _summarize_novatex10() -> dict:
+    return _summarize_material("NovaTex 10")
 
 
 def _compare_z05_z20() -> dict:
@@ -129,7 +153,19 @@ _MATCHERS = [
     (["fancyplast 42", "boundary"], _fp42_boundary),
     (["charpy", "masterofdesaster"], _charpy_master),
     (["charpy", "master"], _charpy_master),
+    # Material summaries
     (["summarize", "fancyplast 42"], _summarize_fp42),
     (["properties", "fancyplast 42"], _summarize_fp42),
+    (["summarize", "ultraplast 99"], _summarize_ultraplast99),
+    (["properties", "ultraplast 99"], _summarize_ultraplast99),
+    (["summarize", "hostacomp"], _summarize_hostacomp_g2),
+    (["properties", "hostacomp"], _summarize_hostacomp_g2),
+    (["summarize", "stardust"], _summarize_stardust),
+    (["properties", "stardust"], _summarize_stardust),
+    (["summarize", "fancyplast 84"], _summarize_fancyplast84),
+    (["properties", "fancyplast 84"], _summarize_fancyplast84),
+    (["summarize", "novatex"], _summarize_novatex10),
+    (["summarize", "novatex 10"], _summarize_novatex10),
+    (["properties", "novatex"], _summarize_novatex10),
     (["z05", "z20"], _compare_z05_z20),
 ]
