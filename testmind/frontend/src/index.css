@@ -27,8 +27,75 @@
   50% { opacity: 1; }
 }
 
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  50% { box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.15); }
+}
+
 .animate-fadeIn { animation: fadeIn 0.4s ease-out both; }
 .animate-fadeInUp { animation: fadeInUp 0.5s ease-out both; }
 .animate-slideIn { animation: slideIn 0.3s ease-out both; }
 .animate-scaleIn { animation: scaleIn 0.3s ease-out both; }
 .animate-stepPulse { animation: stepPulse 1.5s ease-in-out infinite; }
+.animate-gradientShift { animation: gradientShift 6s ease infinite; background-size: 200% 200%; }
+.animate-shimmer { animation: shimmer 2s linear infinite; background-size: 200% 100%; }
+.animate-slideUp { animation: slideUp 0.4s ease-out both; }
+.animate-pulseGlow { animation: pulseGlow 3s ease-in-out infinite; }
+
+/* Screen transition wrapper */
+.screen-enter {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+/* Custom scrollbar for panels */
+.thin-scrollbar::-webkit-scrollbar { width: 4px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Animated gradient border for active panels */
+@keyframes borderGlow {
+  0%, 100% { border-color: #93c5fd; box-shadow: 0 0 8px rgba(59, 130, 246, 0.1); }
+  50% { border-color: #6366f1; box-shadow: 0 0 12px rgba(99, 102, 241, 0.15); }
+}
+.animate-borderGlow { animation: borderGlow 3s ease-in-out infinite; }
+
+/* Staggered list animation */
+@keyframes listItemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-listItemIn { animation: listItemIn 0.3s ease-out both; }
+
+/* Number tick animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-countUp { animation: countUp 0.4s ease-out both; }
+
+/* Subtle hover lift for cards */
+.hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }

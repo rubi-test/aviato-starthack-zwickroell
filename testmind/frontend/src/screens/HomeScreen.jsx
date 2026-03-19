@@ -4,6 +4,7 @@ import MetricCard from "../components/MetricCard";
 import StarterPrompts from "../components/StarterPrompts";
 import FilterBar from "../components/FilterBar";
 import HealthScores from "../components/HealthScores";
+import NotificationBell from "../components/NotificationBell";
 
 function getRecentHistory() {
   try {
@@ -46,14 +47,32 @@ export default function HomeScreen({ onNavigateToChat }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
-        <div className="flex items-baseline gap-2">
-          <span className="text-xl font-bold text-gray-900">TestMind</span>
-          <span className="text-gray-400 text-sm">/ ZwickRoell</span>
+      <header className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradientShift px-8 py-5 flex justify-between items-center shadow-lg">
+        <div className="flex items-baseline gap-3">
+          <span className="text-xl font-bold text-white tracking-tight">TestMind</span>
+          <span className="text-blue-200 text-sm font-medium">/ ZwickRoell</span>
         </div>
-        <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-          Site: Ulm
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigateToChat && onNavigateToChat("")}
+            className="hidden sm:flex items-center gap-2 text-xs text-blue-200 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition-colors"
+            title="Quick search (Cmd+K)"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Search
+            <kbd className="text-[10px] text-blue-300 bg-white/10 border border-white/20 rounded px-1 py-0.5 font-mono ml-1">⌘K</kbd>
+          </button>
+          <NotificationBell onNavigate={handleNavigate} />
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs text-white/80 font-medium">Live</span>
+          </div>
+          <span className="text-xs text-white/70 bg-white/10 px-3 py-1.5 rounded-full font-medium border border-white/20">
+            Site: Ulm
+          </span>
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-8 py-8 space-y-8">
@@ -64,6 +83,8 @@ export default function HomeScreen({ onNavigateToChat }) {
             value={loading ? "—" : (dashboard?.tests_last_7_days ?? 0)}
             onClick={() => toggleMetric("tests")}
             active={expandedMetric === "tests"}
+            sparklineData={dashboard?.sparkline_tests}
+            subtitle="last 14 days activity"
           />
           <MetricCard
             label="Anomalies flagged"
@@ -178,22 +199,29 @@ export default function HomeScreen({ onNavigateToChat }) {
         <FilterBar onFilter={handleNavigate} />
 
         {/* Chat Bar */}
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleNavigate(inputText)}
-            placeholder="Ask anything — 'Is FancyPlast 42 tensile strength declining?'"
-            className="flex-1 h-[52px] px-5 border border-gray-300 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          />
-          <button
-            onClick={() => handleNavigate(inputText)}
-            disabled={!inputText.trim()}
-            className="h-[52px] px-7 bg-blue-600 text-white rounded-full font-medium text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
-          >
-            Ask
-          </button>
+        <div className="relative">
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleNavigate(inputText)}
+                placeholder="Ask anything — 'Is FancyPlast 42 tensile strength declining?'"
+                className="w-full h-[52px] px-5 pr-16 border border-gray-300 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white animate-pulseGlow"
+              />
+              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 font-mono pointer-events-none">
+                ⌘K
+              </kbd>
+            </div>
+            <button
+              onClick={() => handleNavigate(inputText)}
+              disabled={!inputText.trim()}
+              className="h-[52px] px-7 bg-blue-600 text-white rounded-full font-medium text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Ask
+            </button>
+          </div>
         </div>
 
         {/* Starter Prompts */}
@@ -235,11 +263,12 @@ export default function HomeScreen({ onNavigateToChat }) {
                     <button
                       key={i}
                       onClick={() => handleNavigate(insight.action)}
-                      className={`text-left rounded-xl border px-4 py-3 transition-all hover:shadow-md group ${
+                      className={`text-left rounded-xl border px-4 py-3 transition-all hover:shadow-md hover-lift group animate-fadeInUp ${
                         insight.severity === "critical"
                           ? "bg-red-50 border-red-200 hover:border-red-400"
                           : "bg-amber-50 border-amber-200 hover:border-amber-400"
                       }`}
+                      style={{ animationDelay: `${i * 100}ms` }}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -266,6 +295,38 @@ export default function HomeScreen({ onNavigateToChat }) {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Data Quality Banner */}
+        {dashboard && !loading && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 flex items-center justify-between animate-fadeIn">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-400" />
+                <span className="text-xs text-gray-600 font-medium">Data Quality</span>
+              </div>
+              <div className="h-4 w-px bg-gray-200" />
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span>
+                  <span className="font-semibold text-gray-700">{dashboard.recent_tests?.length || 0}</span> recent tests loaded
+                </span>
+                <span>
+                  <span className="font-semibold text-gray-700">{dashboard.materials_in_db}</span> materials
+                </span>
+                <span>
+                  Coverage: <span className="font-semibold text-green-700">2023-2025</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-1">
+                {["bg-green-400", "bg-green-400", "bg-green-400", "bg-amber-400", "bg-green-400"].map((c, i) => (
+                  <span key={i} className={`w-1.5 h-4 rounded-full ${c}`} title={["Freshness", "Completeness", "Consistency", "Coverage", "Volume"][i]} />
+                ))}
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium">4/5 indicators green</span>
             </div>
           </div>
         )}

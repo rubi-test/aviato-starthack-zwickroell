@@ -71,6 +71,9 @@ def trend_analysis(
         time_series.append({
             "date": key,
             "mean_value": round(float(np.mean(vals)), 1),
+            "std_value": round(float(np.std(vals, ddof=1)) if len(vals) > 1 else 0, 2),
+            "min_value": round(float(np.min(vals)), 1),
+            "max_value": round(float(np.max(vals)), 1),
             "n": len(vals),
         })
 

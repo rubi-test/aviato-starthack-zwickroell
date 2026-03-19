@@ -18,6 +18,10 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
+  Area,
+  ComposedChart,
+  ReferenceDot,
+  Brush,
 } from "recharts";
 import StatCards from "./StatCards";
 import WhatIfSimulator from "./WhatIfSimulator";
@@ -32,48 +36,76 @@ function unitFor(property) {
 
 // ─── Table ────────────────────────────────────────────────────────────────────
 
+function SortableTestTable({ tests, count }) {
+  const [sortCol, setSortCol] = useState("date");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const cols = ["date", "material", "test_type", "machine", "site", "tester"];
+
+  const toggleSort = (col) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = [...tests].sort((a, b) => {
+    const va = (a[sortCol] ?? "").toString();
+    const vb = (b[sortCol] ?? "").toString();
+    const cmp = va.localeCompare(vb);
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-2">{count} results</p>
+      <div className="overflow-auto max-h-[380px]">
+        <table className="w-full text-sm border-collapse">
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              {cols.map((c) => (
+                <th
+                  key={c}
+                  onClick={() => toggleSort(c)}
+                  className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 cursor-pointer hover:text-blue-600 select-none transition-colors"
+                >
+                  {c.replace(/_/g, " ")}
+                  {sortCol === c && (
+                    <span className="ml-1 text-blue-500">{sortDir === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((t, i) => (
+              <tr key={i} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 transition-colors`}>
+                {cols.map((c) => (
+                  <td
+                    key={c}
+                    className="px-3 py-2 text-gray-700 border-b border-gray-100 truncate max-w-[140px]"
+                  >
+                    {t[c] || "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function DataTable({ data }) {
   if (data.tests) {
     const tests = data.tests;
     if (!tests.length)
       return <p className="text-sm text-gray-400 py-4 text-center">No results found.</p>;
 
-    const cols = ["date", "material", "test_type", "machine", "site", "tester"];
-    return (
-      <div>
-        <p className="text-xs text-gray-400 mb-2">{data.count} results</p>
-        <div className="overflow-auto max-h-[380px]">
-          <table className="w-full text-sm border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10">
-              <tr>
-                {cols.map((c) => (
-                  <th
-                    key={c}
-                    className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200"
-                  >
-                    {c.replace(/_/g, " ")}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tests.map((t, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  {cols.map((c) => (
-                    <td
-                      key={c}
-                      className="px-3 py-2 text-gray-700 border-b border-gray-100 truncate max-w-[140px]"
-                    >
-                      {t[c] || "—"}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+    return <SortableTestTable tests={tests} count={data.count} />;
   }
 
   if (data.properties) {
@@ -172,6 +204,21 @@ function TimeSeriesChart({ data, onDotClick }) {
       ? "text-green-600"
       : "text-gray-600";
 
+  // Find min/max points for annotations
+  const validPoints = time_series.filter((p) => p.mean_value != null);
+  const minPt = validPoints.reduce((a, b) => (a.mean_value < b.mean_value ? a : b), validPoints[0]);
+  const maxPt = validPoints.reduce((a, b) => (a.mean_value > b.mean_value ? a : b), validPoints[0]);
+
+  // Compute ±1σ confidence band around the mean
+  const withBands = time_series.map(pt => {
+    const std = pt.std_value ?? 0;
+    return {
+      ...pt,
+      band_upper: pt.mean_value != null ? +(pt.mean_value + std).toFixed(2) : null,
+      band_lower: pt.mean_value != null ? +(pt.mean_value - std).toFixed(2) : null,
+    };
+  });
+
   return (
     <div>
       <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-3">
@@ -192,7 +239,7 @@ function TimeSeriesChart({ data, onDotClick }) {
         </span>
       </div>
       <ResponsiveContainer width="100%" height={280}>
-        <LineChart data={time_series} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <ComposedChart data={withBands} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
           <YAxis
@@ -203,10 +250,11 @@ function TimeSeriesChart({ data, onDotClick }) {
           <Tooltip
             content={({ payload, label }) => {
               if (!payload?.length) return null;
+              const filtered = payload.filter(p => !p.dataKey?.startsWith("band_"));
               return (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs">
                   <p className="font-semibold text-gray-700 mb-1">{label}</p>
-                  {payload.map((p, i) => (
+                  {filtered.map((p, i) => (
                     <p key={i} style={{ color: p.color }}>{p.name}: {p.value}{unit}</p>
                   ))}
                   {onDotClick && <p className="text-blue-500 mt-1 text-[10px]">Click to drill down</p>}
@@ -215,6 +263,26 @@ function TimeSeriesChart({ data, onDotClick }) {
             }}
           />
           <Legend />
+          {/* Confidence band (±1σ) */}
+          <Area
+            type="monotone"
+            dataKey="band_upper"
+            stroke="none"
+            fill="#2563eb"
+            fillOpacity={0.08}
+            name="±1σ band"
+            isAnimationActive={true}
+            animationDuration={800}
+          />
+          <Area
+            type="monotone"
+            dataKey="band_lower"
+            stroke="none"
+            fill="#ffffff"
+            fillOpacity={1}
+            legendType="none"
+            isAnimationActive={false}
+          />
           <Line
             type="monotone"
             dataKey="mean_value"
@@ -240,7 +308,34 @@ function TimeSeriesChart({ data, onDotClick }) {
             isAnimationActive={true}
             animationDuration={800}
           />
-        </LineChart>
+          {/* Date range brush for zooming */}
+          {withBands.length > 4 && (
+            <Brush dataKey="date" height={20} stroke="#93c5fd" fill="#eff6ff" travellerWidth={8} />
+          )}
+          {/* Min/Max annotation dots */}
+          {minPt && (
+            <ReferenceDot
+              x={minPt.date}
+              y={minPt.mean_value}
+              r={6}
+              fill="#dc2626"
+              stroke="#fff"
+              strokeWidth={2}
+              label={{ value: `Min: ${minPt.mean_value}${unit}`, position: "bottom", fontSize: 10, fill: "#dc2626", fontWeight: 600 }}
+            />
+          )}
+          {maxPt && maxPt.date !== minPt?.date && (
+            <ReferenceDot
+              x={maxPt.date}
+              y={maxPt.mean_value}
+              r={6}
+              fill="#16a34a"
+              stroke="#fff"
+              strokeWidth={2}
+              label={{ value: `Max: ${maxPt.mean_value}${unit}`, position: "top", fontSize: 10, fill: "#16a34a", fontWeight: 600 }}
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
@@ -524,8 +619,16 @@ function ComplianceChart({ data }) {
   return (
     <div className="space-y-4">
       {/* Verdict banner */}
-      <div className={`border rounded-xl px-4 py-3 font-semibold text-sm ${verdictStyle}`}>
-        {verdict}: {verdict_detail}
+      <div className={`border rounded-xl px-4 py-3 font-semibold text-sm ${verdictStyle} flex items-center gap-2`}>
+        <span className="text-lg">
+          {verdict === "COMPLIANT" ? "✓" : verdict === "AT RISK" ? "⚠" : "✗"}
+        </span>
+        <div>
+          <span>{verdict}: {verdict_detail}</span>
+          <p className="text-xs font-normal mt-0.5 opacity-75">
+            Rule: {property?.replace(/_/g, " ")} must be {direction === "above" ? "≥" : "≤"} {threshold_value} {unit} · Mean: {mean_value} {unit}
+          </p>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -631,8 +734,29 @@ function DrillDownPanel({ date, data, unit, onClose }) {
   );
 }
 
+// ─── Full-screen modal ───────────────────────────────────────────────────────
+
+function FullScreenModal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 animate-fadeIn" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-auto p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-end mb-2">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function ChartArea({ chartType, chartData }) {
   const [drillDown, setDrillDown] = useState(null);
+  const [fullScreen, setFullScreen] = useState(false);
 
   if (!chartType || !chartData) return null;
 
@@ -642,34 +766,59 @@ export default function ChartArea({ chartType, chartData }) {
 
   const unit = unitFor(chartData.property);
 
-  // Charts that support What-If simulation
-  if (chartType === "time_series") {
-    return (
-      <div className="space-y-4">
-        <TimeSeriesChart data={chartData} onDotClick={(pt) => setDrillDown(pt.date)} />
-        {drillDown && (
-          <DrillDownPanel date={drillDown} data={chartData} unit={unit} onClose={() => setDrillDown(null)} />
-        )}
-        <WhatIfSimulator chartType={chartType} chartData={chartData} />
-      </div>
-    );
-  }
-  if (chartType === "forecast") {
-    return (
-      <div className="space-y-4">
-        <ForecastChart data={chartData} />
-        <WhatIfSimulator chartType={chartType} chartData={chartData} />
-      </div>
-    );
-  }
-  if (chartType === "scatter") {
-    return (
-      <div className="space-y-4">
-        <ScatterCorrelationChart data={chartData} />
-        <WhatIfSimulator chartType={chartType} chartData={chartData} />
-      </div>
-    );
-  }
+  const expandButton = (
+    <button
+      onClick={() => setFullScreen(true)}
+      className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 transition-colors"
+      title="Expand chart"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+      </svg>
+      Expand
+    </button>
+  );
 
-  return null;
+  const chartContent = (isFullScreen) => {
+    if (chartType === "time_series") {
+      return (
+        <div className="space-y-4">
+          <TimeSeriesChart data={chartData} onDotClick={(pt) => setDrillDown(pt.date)} />
+          {drillDown && (
+            <DrillDownPanel date={drillDown} data={chartData} unit={unit} onClose={() => setDrillDown(null)} />
+          )}
+          {!isFullScreen && <WhatIfSimulator chartType={chartType} chartData={chartData} />}
+        </div>
+      );
+    }
+    if (chartType === "forecast") {
+      return (
+        <div className="space-y-4">
+          <ForecastChart data={chartData} />
+          {!isFullScreen && <WhatIfSimulator chartType={chartType} chartData={chartData} />}
+        </div>
+      );
+    }
+    if (chartType === "scatter") {
+      return (
+        <div className="space-y-4">
+          <ScatterCorrelationChart data={chartData} />
+          {!isFullScreen && <WhatIfSimulator chartType={chartType} chartData={chartData} />}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div>
+      <div className="flex justify-end mb-1">{expandButton}</div>
+      {chartContent(false)}
+      {fullScreen && (
+        <FullScreenModal onClose={() => setFullScreen(false)}>
+          {chartContent(true)}
+        </FullScreenModal>
+      )}
+    </div>
+  );
 }

@@ -123,6 +123,16 @@ def dashboard():
             "tester": p.get("TESTER", ""),
         })
 
+    # Sparkline data: daily test counts for the last 30 days
+    sparkline_days = 14
+    sparkline = []
+    for day_offset in range(sparkline_days - 1, -1, -1):
+        day = latest - timedelta(days=day_offset)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        count = sum(1 for t in all_tests if day_start <= _get_date(t) < day_end)
+        sparkline.append(count)
+
     return {
         "tests_last_7_days": len(recent),
         "anomalies_flagged": len(anomalies),
@@ -131,6 +141,7 @@ def dashboard():
         "recent_tests": recent_table,
         "anomalies": anomalies,
         "boundary_risks_detail": boundary_risks,
+        "sparkline_tests": sparkline,
     }
 
 

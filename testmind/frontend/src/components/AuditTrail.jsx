@@ -205,12 +205,29 @@ export default function AuditTrail({ steps = [], toolResult, toolUsed }) {
         <span className="text-gray-400">{open ? "▲" : "▼"}</span>
       </button>
       {open && (
-        <div className="px-4 pb-4 space-y-1.5 border-t border-gray-200 bg-gray-50">
-          {steps.map((step, i) => (
-            <p key={i} className="text-xs text-gray-500 font-mono leading-relaxed">
-              <span className="text-gray-400">Step {i + 1} —</span> {step}
-            </p>
-          ))}
+        <div className="px-4 pb-4 border-t border-gray-200 bg-gray-50">
+          {/* Visual step timeline */}
+          <div className="relative ml-3 mt-3">
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-gray-300" />
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3 mb-3 animate-listItemIn" style={{ animationDelay: `${i * 80}ms` }}>
+                <div className="relative -left-[4px] mt-0.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-white flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{step}</p>
+                  <p className="text-[10px] text-gray-300 font-mono">Step {i + 1}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {toolUsed && (
+            <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400 bg-gray-100 rounded-lg px-3 py-2">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Tool: <span className="font-semibold text-gray-500">{toolUsed.replace(/_/g, " ")}</span>
+            </div>
+          )}
           <SourceRecords toolResult={toolResult} toolUsed={toolUsed} />
         </div>
       )}

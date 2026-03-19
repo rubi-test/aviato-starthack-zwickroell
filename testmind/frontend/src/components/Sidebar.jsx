@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { fetchHealthScores } from "../api";
 
 const MATERIALS = [
   "FancyPlast 42",
@@ -45,6 +46,18 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
   const [openSection, setOpenSection] = useState("materials");
   const [history, setHistory] = useState(getHistory);
   const [saved, setSaved] = useState(getSaved);
+  const [healthScores, setHealthScores] = useState({});
+
+  // Fetch health scores for material badges
+  useEffect(() => {
+    fetchHealthScores()
+      .then((data) => {
+        const map = {};
+        for (const s of (data.scores || [])) map[s.material] = s;
+        setHealthScores(map);
+      })
+      .catch(() => {});
+  }, []);
 
   // Refresh history/saved when sidebar opens
   useEffect(() => {
@@ -68,7 +81,7 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center bg-gray-900 border-r border-gray-700 w-12 min-h-screen py-3 gap-4">
+      <div className="flex flex-col items-center bg-gray-900 border-r border-gray-700 w-12 min-h-screen py-3 gap-3">
         <button
           onClick={toggleCollapse}
           className="text-gray-400 hover:text-white p-1 rounded"
@@ -78,23 +91,30 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
-        <button onClick={() => onScreenChange && onScreenChange("explore")} title="Explore Data" className={`p-1 ${currentScreen === "explore" ? "text-blue-400" : "text-gray-400 hover:text-white"}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-6 h-px bg-gray-700 my-1" />
+        <button onClick={() => onScreenChange && onScreenChange("home")} title="Home" className={`p-1.5 rounded-lg ${currentScreen === "home" ? "bg-gray-800 text-blue-400" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        </button>
+        <button onClick={() => onScreenChange && onScreenChange("explore")} title="Explore Data" className={`p-1.5 rounded-lg ${currentScreen === "explore" ? "bg-gray-800 text-blue-400" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </button>
-        <button onClick={() => { setCollapsed(false); setOpenSection("materials"); }} title="Materials" className="text-gray-400 hover:text-white p-1">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-6 h-px bg-gray-700 my-1" />
+        <button onClick={() => { setCollapsed(false); setOpenSection("materials"); }} title="Materials" className="text-gray-400 hover:text-white hover:bg-gray-800 p-1.5 rounded-lg">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         </button>
-        <button onClick={() => { setCollapsed(false); setOpenSection("history"); }} title="History" className="text-gray-400 hover:text-white p-1">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={() => { setCollapsed(false); setOpenSection("history"); }} title="History" className="text-gray-400 hover:text-white hover:bg-gray-800 p-1.5 rounded-lg">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        <button onClick={() => { setCollapsed(false); setOpenSection("saved"); }} title="Saved" className="text-gray-400 hover:text-white p-1">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={() => { setCollapsed(false); setOpenSection("saved"); }} title="Saved" className="text-gray-400 hover:text-white hover:bg-gray-800 p-1.5 rounded-lg">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </button>
@@ -118,35 +138,65 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
         </button>
       </div>
 
-      {/* Explore Data button */}
-      <button
-        onClick={() => onScreenChange && onScreenChange("explore")}
-        className={`flex items-center gap-2 mx-2 mb-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-          currentScreen === "explore"
-            ? "bg-blue-600 text-white"
-            : "text-gray-300 hover:bg-gray-800 hover:text-white"
-        }`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        Explore Data
-      </button>
+      {/* Navigation buttons */}
+      <div className="mx-2 mb-3 space-y-1">
+        <button
+          onClick={() => onScreenChange && onScreenChange("home")}
+          className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            currentScreen === "home"
+              ? "bg-blue-600 text-white"
+              : "text-gray-300 hover:bg-gray-800 hover:text-white"
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Dashboard
+        </button>
+        <button
+          onClick={() => onScreenChange && onScreenChange("explore")}
+          className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            currentScreen === "explore"
+              ? "bg-blue-600 text-white"
+              : "text-gray-300 hover:bg-gray-800 hover:text-white"
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Explore Data
+        </button>
+      </div>
 
-      {/* Materials */}
+      {/* Materials with health badges */}
       <SidebarSection
         icon={<MaterialIcon />}
         label="Materials"
         open={openSection === "materials"}
         onToggle={() => toggleSection("materials")}
       >
-        {MATERIALS.map((mat) => (
-          <SidebarItem
-            key={mat}
-            label={mat}
-            onClick={() => handleNav(`Summarize all properties for ${mat}`)}
-          />
-        ))}
+        {MATERIALS.map((mat) => {
+          const hs = healthScores[mat];
+          return (
+            <button
+              key={mat}
+              onClick={() => handleNav(`Summarize all properties for ${mat}`)}
+              className="w-full text-left px-4 py-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded text-xs flex items-center justify-between group"
+              title={hs ? `Health: ${hs.score}/100 (${hs.status})` : mat}
+            >
+              <span className="truncate">{mat}</span>
+              {hs && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                  hs.status === "healthy" ? "bg-green-900/50 text-green-400" :
+                  hs.status === "attention" ? "bg-amber-900/50 text-amber-400" :
+                  "bg-red-900/50 text-red-400"
+                }`}>
+                  {hs.score}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </SidebarSection>
 
       {/* Quick Links */}
@@ -192,6 +242,14 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
           ))
         )}
       </SidebarSection>
+
+      {/* Keyboard shortcut footer */}
+      <div className="mt-auto px-3 py-3 border-t border-gray-800">
+        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <kbd className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono text-gray-400">⌘K</kbd>
+          <span>Quick search</span>
+        </div>
+      </div>
     </div>
   );
 }
