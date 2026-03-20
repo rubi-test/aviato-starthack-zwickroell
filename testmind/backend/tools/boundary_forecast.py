@@ -17,20 +17,41 @@ def boundary_forecast(
     known = get_distinct_values("TestParametersFlat.MATERIAL")
     material = fuzzy_match_name(material, known)
 
-    query = {"TestParametersFlat.MATERIAL": material, **infer_test_type_filter(property)}
+    type_filter = infer_test_type_filter(property)
 
-    time_series = get_monthly_aggregation(query, property, months_history)
+    # Cascade: relax filters until data is found.
+    filter_candidates = [
+        ({"TestParametersFlat.MATERIAL": material, **type_filter}, "material + type filter"),
+        ({"TestParametersFlat.MATERIAL": material}, "material only (no type filter)"),
+    ]
+
+    time_series = []
+    used_filter_desc = ""
+    attempted = []
+    for query, desc in filter_candidates:
+        attempted.append(desc)
+        time_series = get_monthly_aggregation(query, property, months_history)
+        if time_series:
+            used_filter_desc = desc
+            break
 
     if not time_series:
+        prop_label = property.replace("_", " ")
         return {
-            "result": {"error": f"Not enough data for {material}/{property}."},
-            "steps": [f"Queried {material}, found 0 monthly data points"],
+            "result": {
+                "error": (
+                    f"No {prop_label} measurements found for {material} over the last {months_history} months, "
+                    f"even after relaxing test-type filters. "
+                    f"This material may not have {prop_label} test data in the database."
+                )
+            },
+            "steps": [f"Tried filters: {'; then '.join(attempted)}", "Found 0 monthly data points across all attempts"],
         }
 
     if len(time_series) < 2:
         return {
             "result": {"error": "Not enough monthly data points."},
-            "steps": ["Insufficient monthly data"],
+            "steps": [f"Used filters: {used_filter_desc}", "Insufficient monthly data (need 2+)"],
         }
 
     # Linear regression

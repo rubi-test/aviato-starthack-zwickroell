@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchHealthScores } from "../api";
 
-function RingGauge({ score, size = 90, strokeWidth = 7 }) {
+function RingGauge({ score, size = 72, strokeWidth = 6 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
@@ -16,22 +16,9 @@ function RingGauge({ score, size = 90, strokeWidth = 7 }) {
   );
 }
 
-function BreakdownBar({ label, value, color }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-slate-500 w-28 text-right font-mono">{label}</span>
-      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${value}%`, backgroundColor: color }} />
-      </div>
-      <span className="text-slate-500 font-mono w-8">{value}</span>
-    </div>
-  );
-}
-
 export default function HealthScores({ onNavigate }) {
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
     fetchHealthScores()
@@ -47,11 +34,11 @@ export default function HealthScores({ onNavigate }) {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Material Health</h2>
         </div>
-        <div className="p-6 flex gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div className="p-4 grid grid-cols-4 gap-3">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="flex flex-col items-center gap-2">
-              <div className="w-[90px] h-[90px] rounded-full bg-slate-100 animate-pulse" />
-              <div className="w-16 h-3 bg-slate-100 rounded animate-pulse" />
+              <div className="w-[72px] h-[72px] rounded-full bg-slate-100 animate-pulse" />
+              <div className="w-14 h-2.5 bg-slate-100 rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -66,66 +53,39 @@ export default function HealthScores({ onNavigate }) {
       <div className="px-5 py-3.5 border-b border-slate-200 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-emerald-500" />
         <h2 className="text-sm font-semibold text-slate-700 font-mono uppercase tracking-wider">Material Health</h2>
-        <span className="ml-auto text-xs text-slate-500 font-mono">trend + variability + boundary</span>
+        <span className="ml-auto text-xs text-slate-400 font-mono">click to analyze</span>
       </div>
 
-      <div className="p-5">
-        <div className="flex justify-around flex-wrap gap-4">
+      {/* Fixed height — shows ~2 rows, scrolls if more */}
+      <div className="overflow-y-auto" style={{ maxHeight: "220px" }}>
+        <div className="p-4 grid grid-cols-4 gap-3">
           {scores.map((s) => {
-            const isExpanded = expanded === s.material;
-            const statusColor = s.status === "healthy" ? "text-emerald-600" : s.status === "attention" ? "text-amber-600" : "text-red-600";
+            const statusColor =
+              s.status === "healthy"
+                ? "text-emerald-600"
+                : s.status === "attention"
+                ? "text-amber-600"
+                : "text-red-600";
 
             return (
               <button
                 key={s.material}
-                onClick={() => setExpanded(isExpanded ? null : s.material)}
-                className={`flex flex-col items-center p-3 rounded-xl transition-all ${
-                  isExpanded ? "bg-slate-100 ring-1 ring-blue-500/30" : "hover:bg-slate-50"
-                }`}
+                onClick={() => onNavigate && onNavigate(`Give me a full overview of the material "${s.material}". Use summarize_material_properties("${s.material}") to get its strength stats, trends, variability, and any quality concerns.`)}
+                className="flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-50 transition-all group"
+                title={`${s.material} — Score: ${s.score}/100 · Click to analyze`}
               >
                 <div className="relative">
                   <RingGauge score={s.score} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-lg font-bold font-mono ${statusColor}`}>{s.score}</span>
+                    <span className={`text-sm font-bold font-mono ${statusColor}`}>{s.score}</span>
                   </div>
                 </div>
-                <p className="text-xs font-medium text-slate-700 mt-1.5 text-center max-w-[100px] leading-tight">{s.material}</p>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 font-mono ${statusColor}`}>{s.status}</p>
+                <p className="text-xs font-medium text-slate-700 mt-1 text-center leading-tight max-w-[90px] group-hover:text-blue-600 transition-colors">{s.material}</p>
+                <p className={`text-[9px] font-semibold uppercase tracking-wider font-mono ${statusColor}`}>{s.status}</p>
               </button>
             );
           })}
         </div>
-
-        {expanded && (() => {
-          const s = scores.find((x) => x.material === expanded);
-          if (!s) return null;
-          const b = s.breakdown;
-          const d = s.details;
-
-          return (
-            <div className="mt-5 pt-5 border-t border-slate-200 animate-fadeIn">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800 font-mono">{s.material} — Breakdown</h3>
-                  <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                    {d.n_tests} tests · Mean: {d.mean} MPa · CV: {d.cv_pct}%
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onNavigate && onNavigate(`Summarize all properties for ${s.material}`); }}
-                  className="text-xs text-blue-600 hover:text-blue-500 font-mono"
-                >
-                  ANALYZE →
-                </button>
-              </div>
-              <div className="space-y-2.5">
-                <BreakdownBar label="Trend Stability" value={b.trend_stability} color={b.trend_stability >= 75 ? "#10b981" : b.trend_stability >= 50 ? "#f59e0b" : "#ef4444"} />
-                <BreakdownBar label="Low Variability" value={b.variability} color={b.variability >= 75 ? "#10b981" : b.variability >= 50 ? "#f59e0b" : "#ef4444"} />
-                <BreakdownBar label="Boundary Safety" value={b.boundary_proximity} color={b.boundary_proximity >= 75 ? "#10b981" : b.boundary_proximity >= 50 ? "#f59e0b" : "#ef4444"} />
-              </div>
-            </div>
-          );
-        })()}
       </div>
     </div>
   );

@@ -23,7 +23,8 @@ junior engineers understand test data from ZwickRoell machines. Always:
 - Keep answers concise but complete — a few sentences, not paragraphs
 - Format your responses using Markdown: use **bold** for key values and material names, use bullet points for lists, use ### headings to organize sections when the answer has multiple parts
 - IMPORTANT: Always start your response with a single plain-language summary sentence on its own line, followed by a blank line, then the detailed analysis. The summary should be non-technical and understandable by anyone (e.g. "This material's strength is holding steady and looks healthy." or "There's a noticeable downward trend that may need attention.")
-- When calling tools that require a 'property' parameter, you may use ANY numeric field name from the data — not just the well-known ones. Common fields are: tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n. But if the user asks about a different measurement, infer the most likely field name (snake_case) and pass it — the tool will look it up directly."""
+- When calling tools that require a 'property' parameter, you may use ANY numeric field name from the data — not just the well-known ones. Common fields are: tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n. But if the user asks about a different measurement, infer the most likely field name (snake_case) and pass it — the tool will look it up directly.
+- Test type properties: tensile tests → tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct. Compression tests (ISO 604) → max_force_n, upper_yield_point_mpa, strain_at_max_force_pct. Flexure/bending tests → max_force_n, strain_at_max_force_pct. Charpy/impact tests → impact_energy_j. The available test types in the database are: tensile, compression, flexure. Always use filter_tests or rank_materials with the correct test_type when the user asks about a specific test category."""
 
 TOOL_SCHEMAS_OPENAI = [
     {
@@ -34,7 +35,7 @@ TOOL_SCHEMAS_OPENAI = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "test_type": {"type": "string", "enum": ["tensile", "compression", "charpy"], "description": "Type of test"},
+                    "test_type": {"type": "string", "enum": ["tensile", "compression", "flexure"], "description": "Type of test"},
                     "customer": {"type": "string", "description": "Customer name"},
                     "material": {"type": "string", "description": "Material name"},
                     "tester": {"type": "string", "description": "Tester name"},
@@ -127,9 +128,59 @@ TOOL_SCHEMAS_OPENAI = [
                     "property_x": {"type": "string", "description": "First property field name (X axis) — e.g. tensile_strength_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any other numeric field"},
                     "property_y": {"type": "string", "description": "Second property field name (Y axis) — e.g. tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n, or any other numeric field"},
                     "material": {"type": "string", "description": "Optional: limit to a specific material"},
-                    "test_type": {"type": "string", "enum": ["tensile", "compression", "charpy"], "description": "Optional: limit to a specific test type"},
+                    "test_type": {"type": "string", "enum": ["tensile", "compression", "flexure"], "description": "Optional: limit to a specific test type"},
                 },
                 "required": ["property_x", "property_y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rank_materials",
+            "description": "Rank ALL materials by a property (e.g. which materials have highest tensile strength?). Returns top N materials sorted by mean value. Use this when the user asks 'which materials have high/low X?' or 'what are the strongest/weakest materials?'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "property": {"type": "string", "description": "Property to rank by (e.g. tensile_strength_mpa, tensile_modulus_mpa, elongation_at_break_pct, impact_energy_j, max_force_n)"},
+                    "test_type": {"type": "string", "enum": ["tensile", "compression", "flexure"], "description": "Test type to filter by (default: tensile)"},
+                    "top_n": {"type": "integer", "description": "How many top materials to return (default: 10)"},
+                    "order": {"type": "string", "enum": ["desc", "asc"], "description": "'desc' = highest first (default), 'asc' = lowest first"},
+                },
+                "required": ["property"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_materials",
+            "description": "Find materials matching property criteria described in natural language (e.g. 'high strength materials', 'flexible materials with low modulus', 'materials with strength above 500 MPa'). Translates descriptions into property filters and searches the database. Use this when the user describes material characteristics rather than asking for a specific material name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "test_type": {"type": "string", "enum": ["tensile", "charpy"], "description": "Type of test (default: tensile)"},
+                    "min_tensile_strength_mpa": {"type": "number", "description": "Minimum tensile strength in MPa"},
+                    "max_tensile_strength_mpa": {"type": "number", "description": "Maximum tensile strength in MPa"},
+                    "min_elongation_pct": {"type": "number", "description": "Minimum elongation at break in %"},
+                    "max_elongation_pct": {"type": "number", "description": "Maximum elongation at break in %"},
+                    "min_modulus_mpa": {"type": "number", "description": "Minimum tensile modulus in MPa"},
+                    "max_modulus_mpa": {"type": "number", "description": "Maximum tensile modulus in MPa"},
+                    "min_impact_energy_j": {"type": "number", "description": "Minimum impact energy in J (charpy tests)"},
+                    "max_impact_energy_j": {"type": "number", "description": "Maximum impact energy in J (charpy tests)"},
+                    "top_n": {"type": "integer", "description": "Max number of matching materials to return (default: 15)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_materials",
+            "description": "List all distinct materials tracked in the database. Use this when the user asks 'what materials are in the database?', 'list all materials', 'which materials do we have?', or any similar question.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
             },
         },
     },
@@ -161,6 +212,9 @@ TOOL_CHART_MAP = {
     "boundary_forecast": "forecast",
     "correlate_properties": "scatter",
     "check_compliance": "compliance",
+    "rank_materials": "table",
+    "search_materials": "table",
+    "list_materials": "table",
 }
 
 
@@ -173,6 +227,9 @@ def _execute_tool(name: str, args: dict) -> dict:
     from tools.boundary_forecast import boundary_forecast
     from tools.correlate_properties import correlate_properties
     from tools.check_compliance import check_compliance
+    from tools.rank_materials import rank_materials
+    from tools.search_materials import search_materials
+    from tools.list_materials import list_materials
 
     tool_map = {
         "filter_tests": filter_tests,
@@ -182,6 +239,9 @@ def _execute_tool(name: str, args: dict) -> dict:
         "boundary_forecast": boundary_forecast,
         "correlate_properties": correlate_properties,
         "check_compliance": check_compliance,
+        "rank_materials": rank_materials,
+        "search_materials": search_materials,
+        "list_materials": list_materials,
     }
 
     fn = tool_map.get(name)
@@ -243,19 +303,22 @@ def _chat_openai(messages: list[dict], context: dict) -> dict:
 
     # If model wants to use a tool
     if msg.tool_calls:
-        tool_call = msg.tool_calls[0]
-        tool_name = tool_call.function.name
-        tool_args = json.loads(tool_call.function.arguments)
-
-        tool_result = _execute_tool(tool_name, tool_args)
-
-        # Send tool result back for natural language response
+        # Execute all tool calls and append a response for each one.
+        # OpenAI requires every tool_call_id to have a matching tool message.
         api_messages.append(msg.model_dump())
-        api_messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call.id,
-            "content": json.dumps(tool_result),
-        })
+        last_tool_name = None
+        last_tool_result = None
+        for tool_call in msg.tool_calls:
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
+            tool_result = _execute_tool(tool_name, tool_args)
+            api_messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(tool_result),
+            })
+            last_tool_name = tool_name
+            last_tool_result = tool_result
 
         followup = client.chat.completions.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4o"),
@@ -264,14 +327,14 @@ def _chat_openai(messages: list[dict], context: dict) -> dict:
         )
 
         answer = followup.choices[0].message.content
-        followups = _generate_followups_openai(answer, tool_name, tool_result["result"])
+        followups = _generate_followups_openai(answer, last_tool_name, last_tool_result["result"])
         return {
             "answer": answer,
-            "tool_used": tool_name,
-            "tool_result": tool_result["result"],
-            "steps": tool_result.get("steps", []),
-            "chart_type": TOOL_CHART_MAP.get(tool_name, "text"),
-            "chart_data": tool_result["result"],
+            "tool_used": last_tool_name,
+            "tool_result": last_tool_result["result"],
+            "steps": last_tool_result.get("steps", []),
+            "chart_type": TOOL_CHART_MAP.get(last_tool_name, "text"),
+            "chart_data": last_tool_result["result"],
             "suggested_followups": followups,
         }
 

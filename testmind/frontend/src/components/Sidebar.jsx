@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchHealthScores } from "../api";
 
 const TEST_TYPES = [
   { type: "tensile", count: "20,884" },
@@ -7,35 +6,10 @@ const TEST_TYPES = [
   { type: "flexure", count: "1,750" },
 ];
 
-const MATERIALS = [
-  "Steel",
-  "FEP",
-  "Spur+ 1015",
-  "BEAD WIRE 1.82",
-  "UD-TP Tape",
-  "PTL",
-];
-
-const SAMPLE_QUERIES = [
-  "Summarize all properties for Steel",
-  "Show all tensile tests",
-  "Compare Steel and FEP max force",
-  "What standards are used in our tests?",
-  "Show compression test results",
-  "List all materials in the database",
-];
 
 function getHistory() {
   try {
     return JSON.parse(localStorage.getItem("tm_query_history") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function getSaved() {
-  try {
-    return JSON.parse(localStorage.getItem("tm_saved_templates") || "[]");
   } catch {
     return [];
   }
@@ -51,25 +25,11 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
   });
   const [openSection, setOpenSection] = useState("test_types");
   const [history, setHistory] = useState(getHistory);
-  const [saved, setSaved] = useState(getSaved);
-  const [healthScores, setHealthScores] = useState({});
 
-  // Fetch health scores for material badges
-  useEffect(() => {
-    fetchHealthScores()
-      .then((data) => {
-        const map = {};
-        for (const s of (data.scores || [])) map[s.material] = s;
-        setHealthScores(map);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Refresh history/saved when sidebar opens
+  // Refresh history when sidebar opens
   useEffect(() => {
     if (!collapsed) {
       setHistory(getHistory());
-      setSaved(getSaved());
     }
   }, [collapsed]);
 
@@ -123,11 +83,6 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
         <button onClick={() => { setCollapsed(false); setOpenSection("history"); }} title="History" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 p-1.5 rounded-lg">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        <button onClick={() => { setCollapsed(false); setOpenSection("saved"); }} title="Saved" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 p-1.5 rounded-lg">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </button>
       </div>
@@ -202,57 +157,7 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
         onToggle={() => toggleSection("test_types")}
       >
         {TEST_TYPES.map((t) => (
-          <button
-            key={t.type}
-            onClick={() => handleNav(`Show all ${t.type} tests`)}
-            className="w-full text-left px-4 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded text-xs flex items-center justify-between group"
-          >
-            <span className="uppercase font-medium">{t.type}</span>
-            <span className="text-[9px] text-slate-400 font-mono">{t.count}</span>
-          </button>
-        ))}
-      </SidebarSection>
-
-      {/* Materials */}
-      <SidebarSection
-        icon={<MaterialIcon />}
-        label="Materials"
-        open={openSection === "materials"}
-        onToggle={() => toggleSection("materials")}
-      >
-        {MATERIALS.map((mat) => {
-          const hs = healthScores[mat];
-          return (
-            <button
-              key={mat}
-              onClick={() => handleNav(`Summarize all properties for ${mat}`)}
-              className="w-full text-left px-4 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded text-xs flex items-center justify-between group"
-              title={hs ? `Health: ${hs.score}/100 (${hs.status})` : mat}
-            >
-              <span className="truncate">{mat}</span>
-              {hs && (
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                  hs.status === "healthy" ? "bg-green-100 text-green-600" :
-                  hs.status === "attention" ? "bg-amber-100 text-amber-600" :
-                  "bg-red-100 text-red-600"
-                }`}>
-                  {hs.score}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </SidebarSection>
-
-      {/* Quick Links */}
-      <SidebarSection
-        icon={<ZapIcon />}
-        label="Sample Queries"
-        open={openSection === "quick"}
-        onToggle={() => toggleSection("quick")}
-      >
-        {SAMPLE_QUERIES.map((q) => (
-          <SidebarItem key={q} label={q} onClick={() => handleNav(q)} truncate />
+          <SidebarItem key={t.type} label={`${t.type.toUpperCase()} — ${t.count}`} onClick={() => handleNav(`Show all ${t.type} tests`)} truncate />
         ))}
       </SidebarSection>
 
@@ -267,22 +172,6 @@ export default function Sidebar({ onNavigate, onScreenChange, currentScreen }) {
           <p className="text-slate-400 text-xs px-2 py-1">No history yet</p>
         ) : (
           history.map((q, i) => (
-            <SidebarItem key={i} label={q} onClick={() => handleNav(q)} truncate />
-          ))
-        )}
-      </SidebarSection>
-
-      {/* Saved Templates */}
-      <SidebarSection
-        icon={<BookmarkIcon />}
-        label={`Saved (${saved.length})`}
-        open={openSection === "saved"}
-        onToggle={() => toggleSection("saved")}
-      >
-        {saved.length === 0 ? (
-          <p className="text-slate-400 text-xs px-2 py-1">Bookmark queries from chat</p>
-        ) : (
-          saved.map((q, i) => (
             <SidebarItem key={i} label={q} onClick={() => handleNav(q)} truncate />
           ))
         )}
@@ -346,21 +235,6 @@ function TestTypeIcon() {
   );
 }
 
-function MaterialIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-    </svg>
-  );
-}
-
-function ZapIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  );
-}
 
 function ClockIcon() {
   return (
@@ -370,10 +244,3 @@ function ClockIcon() {
   );
 }
 
-function BookmarkIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-    </svg>
-  );
-}

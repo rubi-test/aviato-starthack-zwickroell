@@ -238,12 +238,12 @@ PROPERTY_TEST_TYPE = {
     "tensile_modulus_mpa": "tensile",
     "elongation_at_break_pct": "tensile",
     "impact_energy_j": "charpy",
-    "max_force_n": None,  # appears in multiple test types
-    "force_at_break_n": "tensile",
-    "upper_yield_point_mpa": "tensile",
-    "strain_at_max_force_pct": "tensile",
+    "max_force_n": None,              # appears in tensile, compression, charpy
+    "force_at_break_n": None,         # appears in tensile and compression
+    "upper_yield_point_mpa": None,    # appears in tensile and compression
+    "strain_at_max_force_pct": None,  # appears in tensile and compression
     "nominal_strain_at_break_pct": "tensile",
-    "work_to_max_force_j": "tensile",
+    "work_to_max_force_j": None,      # appears in tensile and compression
     "work_to_break_j": "tensile",
     "cross_section_mm2": None,
 }
@@ -293,4 +293,8 @@ def test_to_summary(t: dict) -> dict:
         "elongation_at_break_pct": p.get("elongation_at_break_pct") or cr.get("elongation_at_break_pct"),
         "impact_energy_j": p.get("impact_energy_j") or cr.get("impact_energy_j"),
         "max_force_n": p.get("max_force_n") or cr.get("max_force_n"),
+        "upper_yield_point_mpa": p.get("upper_yield_point_mpa") or cr.get("upper_yield_point_mpa"),
+        "strain_at_max_force_pct": p.get("strain_at_max_force_pct") or cr.get("strain_at_max_force_pct"),
+        "force_at_break_n": p.get("force_at_break_n") or cr.get("force_at_break_n"),
+        "work_to_max_force_j": p.get("work_to_max_force_j") or cr.get("work_to_max_force_j"),
     }

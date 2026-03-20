@@ -13,30 +13,66 @@ def trend_analysis(
     months_back: int = 12,
 ) -> dict:
     """Detect trends over time for a property, aggregated to monthly averages."""
-    query = {**infer_test_type_filter(property)}
-    filter_desc = []
-
     if material:
         known = get_distinct_values("TestParametersFlat.MATERIAL")
         material = fuzzy_match_name(material, known)
-        query["TestParametersFlat.MATERIAL"] = material
-        filter_desc.append(f"material={material}")
-    if site:
-        query["TestParametersFlat.SITE"] = site
-        filter_desc.append(f"site={site}")
 
-    time_series = get_monthly_aggregation(query, property, months_back)
+    type_filter = infer_test_type_filter(property)
+
+    # Cascade: try progressively relaxed filter combinations until data is found.
+    # Priority: (material + site + type) → (material + type) → (material only) → (type only)
+    filter_candidates = []
+    if material and site:
+        filter_candidates.append((
+            {**type_filter, "TestParametersFlat.MATERIAL": material, "TestParametersFlat.SITE": site},
+            f"material={material}, site={site}, type filter",
+        ))
+    if material:
+        filter_candidates.append((
+            {**type_filter, "TestParametersFlat.MATERIAL": material},
+            f"material={material}, type filter (no site)",
+        ))
+        filter_candidates.append((
+            {"TestParametersFlat.MATERIAL": material},
+            f"material={material}, no type or site filter",
+        ))
+    if not material:
+        filter_candidates.append((
+            {**type_filter, **({"TestParametersFlat.SITE": site} if site else {})},
+            f"type filter{', site=' + site if site else ''}",
+        ))
+
+    time_series = []
+    used_filter_desc = ""
+    attempted = []
+    for query, desc in filter_candidates:
+        attempted.append(desc)
+        time_series = get_monthly_aggregation(query, property, months_back)
+        if time_series:
+            used_filter_desc = desc
+            break
 
     if not time_series:
+        prop_label = property.replace("_", " ")
+        mat_label = f" for {material}" if material else ""
+        site_label = f" at the {site} site" if site else ""
         return {
-            "result": {"error": "No tests found matching filters."},
-            "steps": [f"Queried with filters: {', '.join(filter_desc)}", "Found 0 monthly data points"],
+            "result": {
+                "error": (
+                    f"No {prop_label} measurements found{mat_label}{site_label} "
+                    f"over the last {months_back} months, even after relaxing site and test-type filters. "
+                    f"This material may not have {prop_label} test data in the database."
+                )
+            },
+            "steps": [f"Tried filters: {'; then '.join(attempted)}", "Found 0 monthly data points across all attempts"],
         }
+
+    filter_desc = used_filter_desc
 
     if len(time_series) < 2:
         return {
             "result": {"error": "Not enough monthly data points for trend (need 2+)."},
-            "steps": ["Only 1 monthly data point found"],
+            "steps": [f"Used filters: {filter_desc}", "Only 1 monthly data point found"],
         }
 
     # Linear regression on monthly means
@@ -73,7 +109,7 @@ def trend_analysis(
         pt["trend_value"] = round(float(intercept + slope * i), 1)
 
     steps = [
-        f"Queried tests with filters: {', '.join(filter_desc) or 'none'}",
+        f"Queried tests with filters: {filter_desc or 'none'}",
         f"Found {total_values} values over {len(time_series)} months",
         "Aggregated to monthly averages",
         "Ran linear regression (numpy.polyfit degree=1)",

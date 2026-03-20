@@ -50,15 +50,6 @@ function ResultEntry({ response, isActive, onFollowUp }) {
   const canExportCSV = chart_type === "table" || chart_type === "compliance";
   const canExportPNG = chart_type && !["table", "compliance"].includes(chart_type);
 
-  let confidenceScore = 50;
-  if (chart_data?.r_squared != null) confidenceScore += chart_data.r_squared * 30;
-  if (chart_data?.count != null) confidenceScore += Math.min(chart_data.count / 10, 20);
-  if (chart_data?.significant) confidenceScore += 15;
-  if (chart_data?.pass_rate_pct != null) confidenceScore += 5;
-  confidenceScore = Math.min(Math.round(confidenceScore), 100);
-  const confLevel = confidenceScore >= 85 ? "HIGH" : confidenceScore >= 60 ? "MED" : "LOW";
-  const confColor = confidenceScore >= 85 ? "emerald" : confidenceScore >= 60 ? "amber" : "red";
-
   return (
     <div
       data-result-id={response.id}
@@ -119,17 +110,6 @@ function ResultEntry({ response, isActive, onFollowUp }) {
           {chart_data.count != null && (
             <span className="text-[10px] bg-slate-100 text-slate-500 px-2.5 py-1 rounded border border-slate-200 font-mono">{chart_data.count} results</span>
           )}
-        </div>
-      )}
-
-      {/* Confidence indicator */}
-      {chart_data && (
-        <div className="flex items-center gap-3 animate-fadeIn">
-          <span className={`text-[10px] font-semibold uppercase tracking-wider font-mono text-${confColor}-600`}>{confLevel} CONF</span>
-          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full bg-${confColor}-500 transition-all duration-700`} style={{ width: `${confidenceScore}%` }} />
-          </div>
-          <span className="text-[10px] text-slate-500 font-mono">{confidenceScore}%</span>
         </div>
       )}
 
@@ -222,7 +202,7 @@ export default function ResultsPanel({ responses, scrollTrigger, onFollowUp }) {
             <p className="text-xs text-slate-400 mt-1 font-mono">Ask a question on the left</p>
           </div>
           <div className="flex flex-col gap-1.5 text-[10px] text-slate-400 font-mono">
-            <span>Try: "Show all tensile tests for Steel"</span>
+            <span>Try: "Show all tensile tests for PVC"</span>
             <span>or press <kbd className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd></span>
           </div>
         </div>

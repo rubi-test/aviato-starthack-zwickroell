@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const MATERIALS = [
-  "Steel", "FEP", "Spur+ 1015",
+  "PVC", "Steel", "FEP", "Spur+ 1015",
   "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
 ];
 

@@ -9,22 +9,59 @@ import { useToast } from "../components/Toast";
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6"];
 
-const QUICK_PROMPTS = [
-  "Line chart of max force over time for Steel",
-  "Bar chart comparing max force across all materials",
-  "Histogram of max force distribution",
-  "Pie chart of tests by material",
-  "Pie chart of tests by test type",
-  "Bar chart comparing Steel and FEP",
+const CAPABILITIES = [
+  { icon: "📊", label: "Switch chart type", example: "Change to line chart" },
+  { icon: "🎯", label: "Filter materials", example: "Show only PVC and Steel" },
+  { icon: "📐", label: "Change metric", example: "Switch to tensile strength" },
+  { icon: "📅", label: "Filter by date", example: "Only show 2023 data" },
+  { icon: "↕️", label: "Sort results", example: "Sort highest first" },
+  { icon: "🏷️", label: "Group by field", example: "Group by test type" },
+  { icon: "🏢", label: "Filter customer/site", example: "Filter to customer Basell" },
+  { icon: "🔢", label: "Adjust bins/limit", example: "Use 20 bins" },
 ];
+
+const QUICK_PROMPTS = [
+  "Bar chart comparing tensile strength across all materials",
+  "Line chart of max force over time for PVC",
+  "Histogram of tensile strength distribution",
+  "Scatter plot: tensile strength vs elongation at break",
+  "Bar chart of top 10 materials by max force, sorted highest first",
+];
+
+function CapabilitiesBanner() {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div className="border-b border-slate-200 bg-slate-50">
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider hover:bg-slate-100 transition-colors"
+      >
+        <span>✦ What the AI can do</span>
+        <span className="text-slate-400">{collapsed ? "▼ show" : "▲ hide"}</span>
+      </button>
+      {!collapsed && (
+        <div className="px-4 pb-3 grid grid-cols-2 gap-1.5">
+          {CAPABILITIES.map((c, i) => (
+            <div key={i} className="flex items-start gap-1.5 bg-white border border-slate-200 rounded px-2 py-1.5">
+              <span className="text-[11px] leading-none mt-px">{c.icon}</span>
+              <div>
+                <p className="text-[10px] font-semibold text-slate-600 font-mono leading-tight">{c.label}</p>
+                <p className="text-[9px] text-slate-400 font-mono leading-tight italic">&ldquo;{c.example}&rdquo;</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function GraphRenderer({ result }) {
   if (!result || !result.success) return null;
 
-  const { chart_type, series, title, x_label, y_label } = result;
+  const { chart_type, series, x_label, y_label } = result;
 
   if (chart_type === "line") {
-    // Merge all series into unified time series
     const dateMap = new Map();
     for (const s of series) {
       for (const pt of s.data) {
@@ -132,40 +169,56 @@ function GraphRenderer({ result }) {
   return null;
 }
 
-export default function GraphBuilderScreen({ onBack }) {
+
+export default function GraphBuilderScreen({ onBack, initialPrompt }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState(null);
   const [graphSpec, setGraphSpec] = useState(null);
   const [history, setHistory] = useState([]);
+  const [followups, setFollowups] = useState([]);
   const chartRef = useRef(null);
   const bottomRef = useRef(null);
+  const sentInitial = useRef(false);
   const addToast = useToast();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (initialPrompt && !sentInitial.current) {
+      sentInitial.current = true;
+      handleSend(initialPrompt);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSend = async (text) => {
     const prompt = (text || input).trim();
     if (!prompt || isLoading) return;
     setInput("");
+    setFollowups([]);
 
     const userMsg = { role: "user", content: prompt, time: new Date() };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
-      console.log("[GraphBuilder] Sending spec:", JSON.stringify(graphSpec));
       const result = await buildGraph(prompt, history, graphSpec);
-      console.log("[GraphBuilder] Got spec back:", JSON.stringify(result.spec));
       setHistory((prev) => [...prev, { role: "user", content: prompt }, { role: "assistant", content: result.message }]);
 
       if (result.success) {
         setCurrentResult(result);
         setGraphSpec(result.spec || null);
-        setMessages((prev) => [...prev, { role: "assistant", content: result.message, explanation: result.explanation, time: new Date() }]);
+        setFollowups(result.followups || []);
+        setMessages((prev) => [...prev, {
+          role: "assistant",
+          content: result.message,
+          explanation: result.explanation,
+          followups: result.followups || [],
+          time: new Date(),
+        }]);
       } else {
         setCurrentResult(null);
         setMessages((prev) => [...prev, {
@@ -176,7 +229,7 @@ export default function GraphBuilderScreen({ onBack }) {
         }]);
       }
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Failed to build graph. Try rephrasing." }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Failed to build graph. Try rephrasing.", time: new Date() }]);
     } finally {
       setIsLoading(false);
     }
@@ -227,7 +280,7 @@ export default function GraphBuilderScreen({ onBack }) {
         <span className="text-slate-200">|</span>
         <span className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider">Graph Builder</span>
         <div className="flex items-center gap-1.5 ml-2">
-          <span className="text-[10px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-200 font-mono">AI-POWERED</span>
+          <span className="text-[10px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-200 font-mono">LLM-DRIVEN</span>
         </div>
         <div className="flex-1" />
         {currentResult && (
@@ -240,21 +293,23 @@ export default function GraphBuilderScreen({ onBack }) {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Chat panel (35%) */}
-        <div className="w-[35%] border-r border-slate-200 flex flex-col">
+        <div className="w-[35%] border-r border-slate-200 flex flex-col bg-white">
+          {/* Capabilities banner — always visible */}
+          <CapabilitiesBanner />
+
           <div className="flex-1 overflow-y-auto p-4 space-y-3 thin-scrollbar">
-            {/* Welcome message */}
+            {/* Welcome / quick starts */}
             {messages.length === 0 && (
-              <div className="text-center pt-4 space-y-4">
-                <div className="text-slate-500 text-xs font-mono space-y-1">
-                  <p className="text-slate-700 text-sm font-semibold mb-3">Build custom graphs with AI</p>
-                  <p>Describe the chart you want in plain English.</p>
-                  <p>I'll build it or explain what won't work.</p>
+              <div className="space-y-3 pt-2">
+                <div className="text-xs text-slate-500 font-mono text-center">
+                  <p className="text-slate-700 text-sm font-semibold mb-1">Build charts with plain English</p>
+                  <p className="text-slate-400">Once built, keep talking to refine it.</p>
                 </div>
-                <div className="space-y-1.5 mt-4">
+                <div className="space-y-1.5">
                   <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Quick starts</p>
                   {QUICK_PROMPTS.map((q, i) => (
                     <button key={i} onClick={() => handleSend(q)}
-                      className="w-full text-left text-xs text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded px-3 py-2 transition-colors font-mono truncate">
+                      className="w-full text-left text-xs text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded px-3 py-2 transition-colors font-mono truncate">
                       {q}
                     </button>
                   ))}
@@ -263,22 +318,15 @@ export default function GraphBuilderScreen({ onBack }) {
             )}
 
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
                 <div className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-br-sm"
-                    : "bg-white border border-slate-200 text-slate-700 rounded-bl-sm"
+                    : "bg-slate-50 border border-slate-200 text-slate-700 rounded-bl-sm"
                 }`}>
                   <p>{msg.content}</p>
                   {msg.explanation && (
                     <p className="text-xs text-blue-400/60 mt-1 font-mono">{msg.explanation}</p>
-                  )}
-                  {msg.suggestions && (
-                    <div className="mt-2 space-y-1">
-                      {msg.suggestions.map((s, j) => (
-                        <p key={j} className="text-xs text-amber-600/70 font-mono">• {s}</p>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>
@@ -286,9 +334,9 @@ export default function GraphBuilderScreen({ onBack }) {
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white border border-slate-200 px-3 py-2 rounded-lg text-xs text-slate-500 font-mono flex items-center gap-2">
+                <div className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs text-slate-500 font-mono flex items-center gap-2">
                   <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  Building graph...
+                  Generating graph...
                 </div>
               </div>
             )}
@@ -303,7 +351,7 @@ export default function GraphBuilderScreen({ onBack }) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Describe your graph..."
+                placeholder={graphSpec ? "Modify the graph..." : "Describe your graph..."}
                 disabled={isLoading}
                 className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 font-mono"
               />
@@ -312,7 +360,7 @@ export default function GraphBuilderScreen({ onBack }) {
                 disabled={isLoading || !input.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-mono hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-500 transition-colors"
               >
-                BUILD
+                {graphSpec ? "MODIFY" : "BUILD"}
               </button>
             </div>
           </div>
@@ -327,7 +375,7 @@ export default function GraphBuilderScreen({ onBack }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 <p className="text-sm text-slate-500 font-mono">Your graph will render here</p>
-                <p className="text-xs text-slate-400 font-mono">Describe what you want in the chat</p>
+                <p className="text-xs text-slate-400 font-mono">Describe what you want in the chat →</p>
               </div>
             </div>
           ) : (
@@ -338,9 +386,7 @@ export default function GraphBuilderScreen({ onBack }) {
                   <h2 className="text-lg font-semibold text-slate-800 font-mono">{currentResult.title}</h2>
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{currentResult.explanation}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200 font-mono uppercase">{currentResult.chart_type}</span>
-                </div>
+                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200 font-mono uppercase">{currentResult.chart_type}</span>
               </div>
 
               {/* Chart */}
@@ -354,11 +400,11 @@ export default function GraphBuilderScreen({ onBack }) {
                 <span>Y: {currentResult.y_label}</span>
               </div>
 
-              {/* Data summary */}
+              {/* Data series chips */}
               {currentResult.series && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {currentResult.series.map((s, i) => (
-                    <div key={i} className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1.5">
+                    <div key={i} className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded px-3 py-1.5 shadow-sm">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                       <span className="text-xs text-slate-500 font-mono">{s.name}</span>
                       <span className="text-[10px] text-slate-400 font-mono">{s.data?.length || 0} pts</span>
@@ -367,13 +413,18 @@ export default function GraphBuilderScreen({ onBack }) {
                 </div>
               )}
 
-              {/* Active graph spec indicator */}
+              {/* Active spec panel */}
               {graphSpec && (
-                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3 animate-fadeIn">
+                <div className="mt-4 bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider">ACTIVE GRAPH SPEC</span>
+                    <span className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider">Active Spec</span>
                     <button
-                      onClick={() => { setGraphSpec(null); setCurrentResult(null); setMessages((prev) => [...prev, { role: "assistant", content: "Graph cleared. Describe a new graph to start fresh.", time: new Date() }]); }}
+                      onClick={() => {
+                        setGraphSpec(null);
+                        setCurrentResult(null);
+                        setFollowups([]);
+                        setMessages((prev) => [...prev, { role: "assistant", content: "Graph cleared. Describe a new graph to start fresh.", time: new Date() }]);
+                      }}
                       className="text-[10px] text-red-400/60 hover:text-red-600 font-mono transition-colors"
                     >
                       CLEAR
@@ -381,14 +432,17 @@ export default function GraphBuilderScreen({ onBack }) {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-200 font-mono">{graphSpec.chart_type}</span>
-                    {graphSpec.materials?.map((m) => (
-                      <span key={m} className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-200 font-mono">{m}</span>
-                    ))}
-                    {graphSpec.properties?.map((p) => (
-                      <span key={p} className="text-[10px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-200 font-mono">{p.replace(/_/g, " ")}</span>
-                    ))}
+                    <span className="text-[10px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-200 font-mono">{graphSpec.property?.replace(/_/g, " ")}</span>
+                    {graphSpec.materials?.length > 0
+                      ? graphSpec.materials.map((m) => (
+                          <span key={m} className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-200 font-mono">{m}</span>
+                        ))
+                      : <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200 font-mono">all materials</span>
+                    }
+                    {graphSpec.date_from && <span className="text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded border border-amber-200 font-mono">from {graphSpec.date_from}</span>}
+                    {graphSpec.date_to && <span className="text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded border border-amber-200 font-mono">to {graphSpec.date_to}</span>}
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono mt-2">Say "add Steel" or "remove FEP" to modify</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-2 italic">Keep chatting to refine — the AI remembers the current chart.</p>
                 </div>
               )}
             </div>

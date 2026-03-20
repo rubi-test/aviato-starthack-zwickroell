@@ -166,7 +166,7 @@ export default function HomeScreen({ onNavigateToChat }) {
 
             {expandedMetric === "materials" && (
               <div className="flex flex-wrap gap-2">
-                {["Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL", "Papier", "Seperator", "NMC850510", "GDL-Material"].map((m) => (
+                {["PVC", "Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL", "Papier", "Seperator", "NMC850510", "GDL-Material"].map((m) => (
                   <button key={m} onClick={() => handleNavigate(`Summarize all properties for ${m}`)} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 hover:border-blue-400 hover:text-blue-600 transition-colors font-mono">
                     {m}
                     <span className="block text-[10px] text-slate-500 mt-0.5 font-sans">Click to view</span>
@@ -208,7 +208,7 @@ export default function HomeScreen({ onNavigateToChat }) {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleNavigate(inputText)}
-                placeholder="Ask anything — 'Show all tensile tests for Steel'"
+                placeholder="Ask anything — 'Show all tensile tests for PVC'"
                 className="w-full h-[48px] px-5 pr-16 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono transition-colors"
               />
               <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 bg-slate-100 border border-slate-300 rounded px-1.5 py-0.5 font-mono pointer-events-none">

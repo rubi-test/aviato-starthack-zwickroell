@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const MATERIALS = [
-  "Steel", "FEP", "Spur+ 1015",
+  "PVC", "Steel", "FEP", "Spur+ 1015",
   "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
 ];
 
@@ -12,9 +12,9 @@ const ACTIONS = [
 ];
 
 const SAMPLE_QUERIES = [
-  "Summarize all properties for Steel",
+  "Summarize all properties for PVC",
   "Show all tensile tests",
-  "Compare Steel and FEP max force",
+  "Compare PVC and Steel max force",
   "What standards are used in our tests?",
   "Show compression test results",
   "Correlate tensile strength and elongation",

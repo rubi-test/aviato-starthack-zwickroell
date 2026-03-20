@@ -16,8 +16,7 @@ app = FastAPI(title="TestMind API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -323,7 +322,10 @@ def health_scores():
     )
     from tools.utils import extract_property_values
 
-    materials = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m)
+    materials = sorted(
+        m for m in get_distinct_values("TestParametersFlat.MATERIAL")
+        if m and not m.startswith("#")
+    )
 
     prop = "tensile_strength_mpa"
     results = []
@@ -482,315 +484,421 @@ class GraphBuilderRequest(BaseModel):
     current_spec: dict | None = None
 
 
+# ─── Graph Builder LLM helpers ─────────────────────────────────────────────
+
+GRAPH_SPEC_SYSTEM = """You are a graph specification generator for a materials testing database.
+Output ONLY a valid JSON object — no markdown, no explanation, no extra keys.
+
+Chart types: bar, line, scatter, histogram, pie
+
+Properties (use exact keys):
+- tensile_strength_mpa    = Tensile Strength (MPa), tensile tests only
+- tensile_modulus_mpa     = Tensile Modulus (MPa), tensile tests only
+- elongation_at_break_pct = Elongation at Break (%), tensile tests only
+- impact_energy_j         = Impact Energy (J), charpy/impact tests only
+- max_force_n             = Max Force (N), all test types
+
+JSON schema (include ALL fields):
+{
+  "chart_type": "bar",
+  "property": "tensile_strength_mpa",
+  "property_y": null,
+  "materials": [],
+  "group_by": "material",
+  "title": "",
+  "date_from": null,
+  "date_to": null,
+  "customer": null,
+  "site": null,
+  "sort": "desc",
+  "bins": 10,
+  "limit": 20
+}
+
+Rules:
+- materials: [] means all; ["Steel","FEP"] means only those two
+- group_by applies to bar and pie: material | test_type | customer | standard
+- property_y is the Y-axis for scatter plots; null otherwise
+- title: "" = auto-generate from the data
+- sort: desc = highest first, asc = lowest first, alpha = alphabetical
+- bins: number of histogram buckets (5–30)
+- limit: max bars/slices shown (5–50)
+- date_from / date_to: use DD.MM.YYYY format if provided
+- When modifying an existing spec: keep all unchanged fields exactly as-is
+"""
+
+
+def _call_llm_for_spec(
+    prompt: str,
+    current_spec: dict | None,
+    history: list[dict],
+    materials: list[str],
+) -> dict:
+    """Ask the LLM to produce or update a graph spec from a natural language prompt."""
+    import json as _json
+    from openai import OpenAI
+
+    client = OpenAI()
+
+    # Build a clean display name for each material (newlines/commas corrupt comma-joined lists)
+    # Keep a mapping so we can restore original DB names after the LLM responds.
+    clean_to_original: dict[str, str] = {}
+    for m in materials[:60]:
+        clean = m.replace("\r\n", " ").replace("\n", " ").replace("\r", " ").strip()
+        clean_to_original[clean] = m
+
+    mat_list = "\n".join(f"- {c}" for c in clean_to_original)
+    if len(materials) > 60:
+        mat_list += f"\n... (+{len(materials) - 60} more)"
+
+    messages = [
+        {"role": "system", "content": GRAPH_SPEC_SYSTEM + f"\n\nAvailable materials:\n{mat_list}"},
+    ]
+    for h in history[-6:]:
+        if h.get("role") in ("user", "assistant"):
+            messages.append({"role": h["role"], "content": str(h.get("content", ""))[:500]})
+
+    user_content = prompt
+    if current_spec:
+        user_content = f"Current spec: {_json.dumps(current_spec)}\n\nUser request: {prompt}"
+    messages.append({"role": "user", "content": user_content})
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        response_format={"type": "json_object"},
+        temperature=0,
+        max_tokens=400,
+    )
+    raw = response.choices[0].message.content
+    spec = _json.loads(raw)
+
+    # Sanitise: ensure required fields exist with safe defaults
+    defaults = {
+        "chart_type": "bar", "property": "tensile_strength_mpa",
+        "property_y": None, "materials": [], "group_by": "material",
+        "title": "", "date_from": None, "date_to": None,
+        "customer": None, "site": None, "sort": "desc", "bins": 10, "limit": 20,
+    }
+    for k, v in defaults.items():
+        spec.setdefault(k, v)
+    spec["bins"] = max(5, min(30, int(spec.get("bins") or 10)))
+    spec["limit"] = max(5, min(50, int(spec.get("limit") or 20)))
+
+    # Map LLM-returned material names back to original DB values.
+    # The LLM sees sanitized names (newlines stripped); resolve back via exact
+    # lookup first, then fuzzy match against original names.
+    if spec.get("materials"):
+        from tools.utils import fuzzy_match_name
+        original_names = list(clean_to_original.values())
+        resolved = []
+        for llm_name in spec["materials"]:
+            # exact match against cleaned names
+            if llm_name in clean_to_original:
+                resolved.append(clean_to_original[llm_name])
+            else:
+                # fuzzy match against original names (handles minor LLM rephrasing)
+                resolved.append(fuzzy_match_name(llm_name, original_names))
+        spec["materials"] = resolved
+
+    return spec
+
+
+PROP_LABELS = {
+    "tensile_strength_mpa": "Tensile Strength (MPa)",
+    "tensile_modulus_mpa": "Tensile Modulus (MPa)",
+    "elongation_at_break_pct": "Elongation at Break (%)",
+    "impact_energy_j": "Impact Energy (J)",
+    "max_force_n": "Max Force (N)",
+}
+
+
+def _test_type_for(prop: str) -> str | None:
+    if prop in ("tensile_strength_mpa", "tensile_modulus_mpa", "elongation_at_break_pct"):
+        return "tensile"
+    if prop == "impact_energy_j":
+        return "charpy"
+    return None
+
+
+def _fetch_data_for_spec(spec: dict, all_materials: list[str]) -> tuple:
+    """Execute DB queries for a spec and return (series, title, x_label, y_label, explanation)."""
+    import numpy as np
+    from data_access import (
+        get_distinct_values, get_monthly_aggregation, get_stats_aggregation,
+        get_enriched_stats_aggregation, get_enriched_property_values,
+        get_tests_with_results, get_grouped_counts,
+    )
+    from tools.utils import extract_property_values, get_property_value, build_date_filter
+
+    chart_type = spec["chart_type"]
+    prop = spec["property"]
+    prop_y = spec.get("property_y")
+    materials = spec["materials"] or all_materials
+    group_by = spec.get("group_by", "material")
+    sort = spec.get("sort", "desc")
+    limit = spec["limit"]
+    bins = spec["bins"]
+
+    y_label = PROP_LABELS.get(prop, prop.replace("_", " ").title())
+    title = spec.get("title", "") or ""
+
+    def base_query(mat=None):
+        q = {}
+        if mat:
+            q["TestParametersFlat.MATERIAL"] = mat
+        if spec.get("customer"):
+            q["TestParametersFlat.CUSTOMER"] = spec["customer"]
+        if spec.get("site"):
+            q["TestParametersFlat.SITE"] = spec["site"]
+        if spec.get("date_from") or spec.get("date_to"):
+            q.update(build_date_filter(None, spec.get("date_from"), spec.get("date_to")))
+        tt = _test_type_for(prop)
+        if tt:
+            q["TestParametersFlat.TYPE_OF_TESTING_STR"] = tt
+        return q
+
+    def _sort(data, key="mean"):
+        if sort == "desc":
+            data.sort(key=lambda x: x[key], reverse=True)
+        elif sort == "asc":
+            data.sort(key=lambda x: x[key])
+        elif sort == "alpha":
+            data.sort(key=lambda x: x["name"])
+
+    series = []
+    x_label = ""
+    explanation = ""
+
+    if chart_type == "bar":
+        x_label = group_by.replace("_", " ").title() if group_by != "material" else "Material"
+        group_field_map = {
+            "material": ("TestParametersFlat.MATERIAL", materials[:limit]),
+            "test_type": ("TestParametersFlat.TYPE_OF_TESTING_STR", None),
+            "customer": ("TestParametersFlat.CUSTOMER", None),
+            "standard": ("TestParametersFlat.STANDARD", None),
+        }
+        field_path, group_values = group_field_map.get(group_by, group_field_map["material"])
+        if group_values is None:
+            group_values = [g for g in get_distinct_values(field_path) if g][:limit]
+
+        bar_data = []
+        for group_val in group_values:
+            q = {**base_query(), field_path: group_val}
+            stats = get_stats_aggregation(q, prop)
+            if stats["n"] == 0:
+                stats = get_enriched_stats_aggregation(q, prop)
+            if stats["n"] > 0:
+                bar_data.append({"name": group_val, "mean": stats["mean"], "std": stats["std"], "n": stats["n"]})
+
+        _sort(bar_data)
+        series = [{"name": "mean", "data": bar_data}]
+        if not title:
+            title = f"{y_label} by {x_label}"
+        explanation = f"Comparing {y_label} across {len(bar_data)} {group_by.replace('_', ' ')}(s). Error bars = ±1 std dev."
+
+    elif chart_type == "line":
+        x_label = "Month"
+        if not title:
+            title = f"{y_label} Over Time"
+        for mat in materials:
+            pts = [{"x": p["date"], "y": p["mean_value"], "n": p["n"]}
+                   for p in get_monthly_aggregation(base_query(mat), prop, months_back=120)]
+            if pts:
+                series.append({"name": mat, "data": pts})
+        names = [s["name"] for s in series]
+        explanation = f"Monthly average {y_label} over time for {', '.join(names[:5])}{'...' if len(names) > 5 else ''}."
+
+    elif chart_type == "scatter":
+        if not prop_y:
+            prop_y = "elongation_at_break_pct"
+        x_label = PROP_LABELS.get(prop, prop)
+        y_label = PROP_LABELS.get(prop_y, prop_y)
+        if not title:
+            title = f"{x_label} vs {y_label}"
+        for mat in materials:
+            q = base_query(mat)
+            q.pop("TestParametersFlat.TYPE_OF_TESTING_STR", None)
+            tests = get_tests_with_results(q, properties=[prop, prop_y], limit=2000)
+            pts = []
+            for t in tests:
+                vx, vy = get_property_value(t, prop), get_property_value(t, prop_y)
+                if vx is not None and vy is not None:
+                    try:
+                        pts.append({"x": round(float(vx), 2), "y": round(float(vy), 2)})
+                    except (TypeError, ValueError):
+                        pass
+            if pts:
+                series.append({"name": mat, "data": pts})
+        explanation = f"Scatter: {x_label} vs {y_label}. Each point = one test."
+
+    elif chart_type == "histogram":
+        x_label = y_label
+        y_label = "Frequency"
+        if not title:
+            title = f"Distribution of {x_label}"
+        all_vals = []
+        for mat in materials:
+            q = base_query(mat)
+            vals = extract_property_values(get_tests_with_results(q, properties=[prop], limit=5000), prop)
+            if not vals:
+                vals = get_enriched_property_values(q, prop, limit=5000)
+            all_vals.extend(vals)
+        if all_vals:
+            arr = np.array(all_vals)
+            n_bins = min(bins, max(5, int(np.ceil(np.sqrt(len(arr))))))
+            counts, edges = np.histogram(arr, bins=n_bins)
+            series = [{"name": "distribution", "data": [
+                {"range": f"{edges[i]:.1f}-{edges[i+1]:.1f}", "count": int(counts[i]),
+                 "mid": round(float((edges[i] + edges[i + 1]) / 2), 2)}
+                for i in range(len(counts))
+            ]}]
+        explanation = f"Distribution of {x_label} across {len(all_vals)} tests."
+
+    elif chart_type == "pie":
+        group_field_map = {
+            "material": "TestParametersFlat.MATERIAL",
+            "test_type": "TestParametersFlat.TYPE_OF_TESTING_STR",
+            "customer": "TestParametersFlat.CUSTOMER",
+            "standard": "TestParametersFlat.STANDARD",
+        }
+        field_path = group_field_map.get(group_by, "TestParametersFlat.MATERIAL")
+        grouped = get_grouped_counts(field_path, query=base_query())
+        data = [{"name": g["name"], "value": g["count"]}
+                for g in grouped if g["name"] not in (None, "", "unknown")][:limit]
+        if sort == "desc":
+            data.sort(key=lambda x: x["value"], reverse=True)
+        elif sort == "asc":
+            data.sort(key=lambda x: x["value"])
+        elif sort == "alpha":
+            data.sort(key=lambda x: x["name"])
+        series = [{"name": "pie", "data": data}]
+        total = sum(d["value"] for d in data)
+        if not title:
+            title = f"Tests by {group_by.replace('_', ' ').title()}"
+        explanation = f"Distribution of {total:,} tests by {group_by.replace('_', ' ')}."
+
+    return series, title, x_label, y_label, explanation
+
+
+def _followup_suggestions(spec: dict) -> list[str]:
+    """Return contextual follow-up prompt suggestions based on the current spec."""
+    ct = spec.get("chart_type", "bar")
+    prop = spec.get("property", "tensile_strength_mpa")
+    mats = spec.get("materials", [])
+
+    suggestions = {
+        "bar": [
+            "Sort alphabetically",
+            "Show only top 10",
+            "Group by test type instead",
+            "Switch to line chart over time",
+            "Filter to last 2 years",
+        ],
+        "line": [
+            "Show only from 2022 to 2024",
+            "Add another material",
+            "Switch to bar chart",
+            "Show tensile modulus instead",
+        ],
+        "scatter": [
+            "Change Y axis to elongation at break",
+            "Show only one material",
+            "Switch to histogram",
+        ],
+        "histogram": [
+            "Use 20 bins",
+            "Filter to tensile tests only",
+            "Show only Steel",
+            "Switch to bar chart",
+        ],
+        "pie": [
+            "Group by customer instead",
+            "Group by test type",
+            "Group by standard",
+            "Show top 15 only",
+        ],
+    }
+    base = suggestions.get(ct, [])
+
+    # Add a material-specific suggestion if materials are set
+    if mats:
+        other_props = [p for p in PROP_LABELS if p != prop]
+        if other_props:
+            label = PROP_LABELS[other_props[0]].split(" (")[0]
+            base = [f"Show {label} instead"] + base[:3]
+
+    return base[:4]
+
+
 @app.post("/api/graph-builder")
 def graph_builder(req: GraphBuilderRequest):
     """
-    AI-powered graph builder — interprets natural language requests and returns
-    chart configuration + data. Supports incremental updates via current_spec.
+    LLM-powered graph builder. The LLM produces/updates a structured graph spec
+    from natural language; the backend executes DB queries to populate it with data.
     """
-    import numpy as np
-    from data_access import (
-        get_distinct_values,
-        get_monthly_aggregation,
-        get_stats_aggregation,
-        get_tests_with_results,
-        get_grouped_counts,
-    )
-    from tools.utils import fuzzy_match_name, get_property_value
-    from schema_map import get_unit
+    from data_access import get_distinct_values
 
-    # Available materials and properties
     materials = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m)
 
-    properties = [
-        "tensile_strength_mpa", "tensile_modulus_mpa",
-        "elongation_at_break_pct", "impact_energy_j", "max_force_n",
-    ]
-    property_labels = {
-        "tensile_strength_mpa": "Tensile Strength (MPa)",
-        "tensile_modulus_mpa": "Tensile Modulus (MPa)",
-        "elongation_at_break_pct": "Elongation at Break (%)",
-        "impact_energy_j": "Impact Energy (J)",
-        "max_force_n": "Max Force (N)",
-    }
-
-    prompt_lower = req.prompt.lower()
-    spec = req.current_spec
-
-    # ─── Detect modification intent ────────────────────────────────────────
-    is_add = any(w in prompt_lower for w in ["add ", "also ", "include ", "overlay ", "plus ", "and also", "additionally", "as well", "too", "along with"])
-    is_remove = any(w in prompt_lower for w in ["remove ", "drop ", "exclude ", "without ", "hide ", "take off", "take away", "get rid of"])
-    is_change_type = any(w in prompt_lower for w in ["change to ", "switch to ", "make it a ", "convert to ", "show as "])
-    is_clear = any(w in prompt_lower for w in ["clear", "reset", "start over", "new graph", "from scratch"])
-    has_spec = spec is not None and not is_clear
-
-    # ─── Simple NLP parser to extract intent ───────────────────────────────
-    prompt_chart_type = None
-    if any(w in prompt_lower for w in ["scatter", "correlation", "vs", "versus"]):
-        prompt_chart_type = "scatter"
-    elif any(w in prompt_lower for w in ["bar", "compare", "comparison", "group"]):
-        prompt_chart_type = "bar"
-    elif any(w in prompt_lower for w in ["histogram", "distribution"]):
-        prompt_chart_type = "histogram"
-    elif any(w in prompt_lower for w in ["pie", "breakdown", "proportion"]):
-        prompt_chart_type = "pie"
-    elif any(w in prompt_lower for w in ["line", "trend", "over time", "time series"]):
-        prompt_chart_type = "line"
-
-    # Find mentioned materials
-    prompt_materials = [m for m in materials if m.lower() in prompt_lower]
-
-    # Find mentioned properties
-    prop_aliases = {
-        "tensile strength": "tensile_strength_mpa",
-        "tensile modulus": "tensile_modulus_mpa",
-        "modulus": "tensile_modulus_mpa",
-        "elongation": "elongation_at_break_pct",
-        "impact energy": "impact_energy_j",
-        "impact": "impact_energy_j",
-        "charpy": "impact_energy_j",
-        "max force": "max_force_n",
-        "force": "max_force_n",
-        "strength": "tensile_strength_mpa",
-        "mpa": "tensile_strength_mpa",
-    }
-
-    prompt_props = []
-    for alias, prop in prop_aliases.items():
-        if alias in prompt_lower and prop not in prompt_props:
-            prompt_props.append(prop)
-
-    # ─── Resolve final spec by merging with current_spec ───────────────────
-    is_modification = has_spec and (is_add or is_remove or is_change_type)
-    is_full_fresh = prompt_chart_type and prompt_materials and prompt_props
-
-    if has_spec and not is_clear and not is_full_fresh:
-        existing_materials = spec.get("materials", [])
-        existing_props = spec.get("properties", ["tensile_strength_mpa"])
-        chart_type = prompt_chart_type or spec.get("chart_type", "line")
-
-        if is_add and prompt_materials:
-            mentioned_materials = list(dict.fromkeys(existing_materials + prompt_materials))
-        elif is_remove and prompt_materials:
-            mentioned_materials = [m for m in existing_materials if m not in prompt_materials]
-            if not mentioned_materials:
-                mentioned_materials = existing_materials
-        elif prompt_materials and not is_add and not is_remove:
-            mentioned_materials = prompt_materials
-        else:
-            mentioned_materials = existing_materials
-
-        if is_add and prompt_props:
-            mentioned_props = list(dict.fromkeys(existing_props + prompt_props))
-        elif is_remove and prompt_props:
-            mentioned_props = [p for p in existing_props if p not in prompt_props]
-            if not mentioned_props:
-                mentioned_props = existing_props
-        elif prompt_props:
-            mentioned_props = prompt_props
-        else:
-            mentioned_props = existing_props
-    else:
-        chart_type = prompt_chart_type or "line"
-        mentioned_materials = prompt_materials if prompt_materials else materials
-        mentioned_props = prompt_props if prompt_props else ["tensile_strength_mpa"]
-
-    def test_type_for_prop(prop):
-        if "impact" in prop or "charpy" in prop.lower():
-            return "charpy"
-        return "tensile"
-
-    # ─── Build data based on chart type (using data_access) ────────────────
-    series = []
-    explanation = ""
-    x_label = ""
-    y_label = property_labels.get(mentioned_props[0], mentioned_props[0])
-    title = ""
-
-    if chart_type == "scatter" and len(mentioned_props) >= 2:
-        prop_x = mentioned_props[0]
-        prop_y = mentioned_props[1]
-        x_label = property_labels.get(prop_x, prop_x)
-        y_label = property_labels.get(prop_y, prop_y)
-        title = f"{x_label} vs {y_label}"
-
-        for mat in mentioned_materials:
-            tt = test_type_for_prop(prop_x)
-            query = {
-                "TestParametersFlat.MATERIAL": mat,
-                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
-            }
-            tests = get_tests_with_results(query, properties=[prop_x, prop_y], limit=2000)
-            points = []
-            for t in tests:
-                vx = get_property_value(t, prop_x)
-                vy = get_property_value(t, prop_y)
-                if vx is not None and vy is not None:
-                    try:
-                        points.append({"x": round(float(vx), 2), "y": round(float(vy), 2)})
-                    except (TypeError, ValueError):
-                        pass
-            if points:
-                series.append({"name": mat, "data": points})
-
-        explanation = f"Scatter plot of {x_label} vs {y_label} for {', '.join(mentioned_materials)}. Each point represents one test."
-
-    elif chart_type == "bar":
-        prop = mentioned_props[0]
-        title = f"{y_label} by Material"
-        x_label = "Material"
-        bar_data = []
-        for mat in mentioned_materials:
-            tt = test_type_for_prop(prop)
-            query = {
-                "TestParametersFlat.MATERIAL": mat,
-                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
-            }
-            stats = get_stats_aggregation(query, prop)
-            if stats["n"] > 0:
-                bar_data.append({
-                    "name": mat,
-                    "mean": stats["mean"],
-                    "std": stats["std"],
-                    "n": stats["n"],
-                })
-        series = [{"name": "comparison", "data": bar_data}]
-        explanation = f"Bar chart comparing {y_label} across {len(mentioned_materials)} materials. Error bars show ±1 standard deviation."
-
-    elif chart_type == "histogram":
-        prop = mentioned_props[0]
-        title = f"Distribution of {y_label}"
-        x_label = y_label
-        y_label = "Frequency"
-        all_vals = []
-        for mat in mentioned_materials:
-            tt = test_type_for_prop(prop)
-            query = {
-                "TestParametersFlat.MATERIAL": mat,
-                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
-            }
-            tests = get_tests_with_results(query, properties=[prop], limit=5000)
-            from tools.utils import extract_property_values
-            all_vals.extend(extract_property_values(tests, prop))
-
-        if all_vals:
-            arr = np.array(all_vals)
-            n_bins = min(15, max(5, int(np.ceil(np.sqrt(len(arr))))))
-            counts, edges = np.histogram(arr, bins=n_bins)
-            bins_data = []
-            for i in range(len(counts)):
-                bins_data.append({
-                    "range": f"{edges[i]:.1f}-{edges[i+1]:.1f}",
-                    "count": int(counts[i]),
-                    "mid": round(float((edges[i] + edges[i+1]) / 2), 2),
-                })
-            series = [{"name": "distribution", "data": bins_data}]
-        explanation = f"Histogram showing the distribution of {property_labels.get(prop, prop)} across {len(all_vals)} tests."
-
-    elif chart_type == "pie":
-        title = "Test Distribution"
-        if any(w in prompt_lower for w in ["type", "test type", "testing"]):
-            grouped = get_grouped_counts("TestParametersFlat.TYPE_OF_TESTING_STR")
-            known = [g for g in grouped if g["name"] != "unknown"]
-            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
-            series = [{"name": "by_type", "data": [{"name": g["name"], "value": g["count"]} for g in known]}]
-            total = sum(g["count"] for g in known)
-            explanation = f"Pie chart showing test distribution by test type across {total:,} tests."
-            if excluded:
-                explanation += f" ({excluded:,} tests with no test type excluded.)"
-        elif any(w in prompt_lower for w in ["standard", "norm", "iso", "din", "astm"]):
-            grouped = get_grouped_counts("TestParametersFlat.STANDARD")
-            known = [g for g in grouped if g["name"] != "unknown"]
-            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
-            series = [{"name": "by_standard", "data": [{"name": g["name"], "value": g["count"]} for g in known[:15]]}]
-            total = sum(g["count"] for g in known)
-            explanation = f"Pie chart showing test distribution by standard across {total:,} tests (top 15 shown)."
-            if excluded:
-                explanation += f" ({excluded:,} tests with no standard excluded.)"
-        elif any(w in prompt_lower for w in ["customer", "company"]):
-            grouped = get_grouped_counts("TestParametersFlat.CUSTOMER")
-            known = [g for g in grouped if g["name"] != "unknown"]
-            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
-            series = [{"name": "by_customer", "data": [{"name": g["name"], "value": g["count"]} for g in known[:15]]}]
-            total = sum(g["count"] for g in known)
-            explanation = f"Pie chart showing test distribution by customer across {total:,} tests (top 15 shown)."
-            if excluded:
-                explanation += f" ({excluded:,} tests with no customer excluded.)"
-        else:
-            grouped = get_grouped_counts("TestParametersFlat.MATERIAL")
-            known = [g for g in grouped if g["name"] != "unknown"]
-            excluded = sum(g["count"] for g in grouped if g["name"] == "unknown")
-            series = [{"name": "by_material", "data": [{"name": g["name"], "value": g["count"]} for g in known]}]
-            total = sum(g["count"] for g in known)
-            explanation = f"Pie chart showing test distribution by material across {total:,} tests."
-            if excluded:
-                explanation += f" ({excluded:,} tests with no material field excluded.)"
-
-    else:
-        # Line: time series via monthly aggregation
-        prop = mentioned_props[0]
-        title = f"{y_label} Over Time"
-        x_label = "Month"
-
-        for mat in mentioned_materials:
-            tt = test_type_for_prop(prop)
-            query = {
-                "TestParametersFlat.MATERIAL": mat,
-                "TestParametersFlat.TYPE_OF_TESTING_STR": tt,
-            }
-            time_series = get_monthly_aggregation(query, prop, months_back=120)
-            points = [{"x": pt["date"], "y": pt["mean_value"], "n": pt["n"]} for pt in time_series]
-            if points:
-                series.append({"name": mat, "data": points})
-
-        explanation = f"Time series of monthly average {y_label} for {', '.join([s['name'] for s in series])}."
-
-    # Check if we actually have data
-    has_data = any(s.get("data") for s in series)
-    if not has_data:
-        suggestions = []
-        if not mentioned_materials:
-            suggestions.append("Specify a material (e.g., Steel, FEP, Spur+ 1015)")
-        if chart_type == "scatter" and len(mentioned_props) < 2:
-            suggestions.append("For scatter plots, mention two properties (e.g., 'tensile strength vs elongation')")
-        suggestions.append(f"Available materials: {', '.join(materials[:10])}")
-        suggestions.append(f"Available properties: {', '.join(property_labels.values())}")
-
+    try:
+        spec = _call_llm_for_spec(req.prompt, req.current_spec, req.history, materials)
+    except Exception:
+        logger.exception("LLM spec generation failed")
         return {
             "success": False,
-            "message": "I couldn't build that graph — no matching data found for your request.",
-            "suggestions": suggestions,
-            "available": {
-                "materials": materials,
-                "properties": list(property_labels.keys()),
-                "property_labels": property_labels,
-                "chart_types": ["line", "bar", "scatter", "histogram", "pie"],
-            },
+            "message": "Could not interpret your request. Try something like: 'bar chart of tensile strength by material'.",
+            "suggestions": ["Bar chart of tensile strength by material", "Histogram of max force distribution", "Pie chart of tests by test type"],
         }
 
-    resolved_spec = {
-        "chart_type": chart_type,
-        "materials": mentioned_materials,
-        "properties": mentioned_props,
-    }
+    try:
+        series, title, x_label, y_label, explanation = _fetch_data_for_spec(spec, materials)
+    except Exception:
+        logger.exception("Data fetch failed for spec: %s", spec)
+        return {
+            "success": False,
+            "message": "Failed to fetch data for this chart. Check the server logs for details.",
+            "spec": spec,
+            "suggestions": ["Bar chart of tensile strength by material", "Histogram of max force distribution"],
+        }
+
+    has_data = any(s.get("data") for s in series)
+    if not has_data:
+        prop_label = PROP_LABELS.get(spec["property"], spec["property"])
+        return {
+            "success": False,
+            "message": f"No data found for {prop_label} with the filters you specified. Try different materials or a different property.",
+            "suggestions": [
+                "Bar chart of tensile strength by material",
+                "Histogram of max force distribution",
+                "Pie chart of tests by material",
+                f"Show {', '.join(materials[:3])} on a line chart",
+            ],
+            "spec": spec,
+        }
+
+    followups = _followup_suggestions(spec)
 
     return {
         "success": True,
-        "chart_type": chart_type,
+        "chart_type": spec["chart_type"],
         "title": title,
         "x_label": x_label,
         "y_label": y_label,
         "series": series,
         "explanation": explanation,
-        "spec": resolved_spec,
-        "message": f"Here's your {chart_type} chart: {title}",
-        "available": {
-            "materials": materials,
-            "properties": list(property_labels.keys()),
-            "property_labels": property_labels,
-            "chart_types": ["line", "bar", "scatter", "histogram", "pie"],
-        },
+        "spec": spec,
+        "followups": followups,
+        "message": f"Here's your {spec['chart_type']} chart: {title}",
     }
+
+
+@app.get("/api/materials")
+def materials_list():
+    """List all distinct material names in the database."""
+    from data_access import get_distinct_values
+    mats = sorted(m for m in get_distinct_values("TestParametersFlat.MATERIAL") if m and not m.startswith("#"))
+    return {"materials": mats}
 
 
 @app.get("/api/standards")

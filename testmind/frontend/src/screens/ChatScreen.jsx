@@ -21,15 +21,6 @@ function saveToHistory(query) {
   } catch {}
 }
 
-function saveTemplate(query) {
-  try {
-    const existing = JSON.parse(localStorage.getItem("tm_saved_templates") || "[]");
-    if (!existing.includes(query)) {
-      localStorage.setItem("tm_saved_templates", JSON.stringify([query, ...existing].slice(0, 20)));
-    }
-  } catch {}
-}
-
 export default function ChatScreen({ initialMessage, onBack }) {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
@@ -37,10 +28,6 @@ export default function ChatScreen({ initialMessage, onBack }) {
   const [responses, setResponses] = useState([]);
   const [scrollTrigger, setScrollTrigger] = useState({ id: null, seq: 0 });
   const [responseTime, setResponseTime] = useState(null);
-  const [savedQueries, setSavedQueries] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("tm_saved_templates") || "[]"); }
-    catch { return []; }
-  });
   const sentInitial = useRef(false);
 
   useEffect(() => {
@@ -80,15 +67,6 @@ export default function ChatScreen({ initialMessage, onBack }) {
   };
 
   const addToast = useToast();
-
-  const handleBookmark = (query) => {
-    saveTemplate(query);
-    setSavedQueries((prev) => {
-      if (prev.includes(query)) return prev;
-      return [query, ...prev].slice(0, 20);
-    });
-    addToast("Query saved to bookmarks", "success");
-  };
 
   const contextInfo = (() => {
     const response = responses[0];
@@ -164,7 +142,7 @@ export default function ChatScreen({ initialMessage, onBack }) {
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
         <div className="w-2/5 border-r border-slate-200 bg-slate-50 flex flex-col overflow-hidden">
-          <ChatThread messages={messages} isLoading={isLoading} onSend={handleSend} disabled={isLoading} onBookmark={handleBookmark} savedQueries={savedQueries} onResultClick={(id) => setScrollTrigger((prev) => ({ id, seq: prev.seq + 1 }))} />
+          <ChatThread messages={messages} isLoading={isLoading} onSend={handleSend} disabled={isLoading} onResultClick={(id) => setScrollTrigger((prev) => ({ id, seq: prev.seq + 1 }))} />
         </div>
         <div className="w-3/5 bg-white overflow-hidden">
           <ResultsPanel responses={responses} scrollTrigger={scrollTrigger} onFollowUp={handleSend} />

@@ -1,7 +1,7 @@
 const PROMPTS = [
-  "Summarize all properties for Steel",
+  "Summarize all properties for PVC",
   "Show all tensile tests",
-  "Compare Steel and FEP max force",
+  "Compare PVC and Steel max force",
   "What standards are used in our tests?",
   "Show compression test results",
   "List all materials in the database",

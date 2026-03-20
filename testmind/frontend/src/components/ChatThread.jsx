@@ -20,7 +20,7 @@ const ANALYSIS_STEPS = [
 const AUTOCOMPLETE_SUGGESTIONS = [
   "Summarize all properties for {material}",
   "Show all tensile tests for {material}",
-  "Compare Steel and FEP max force",
+  "Compare PVC and Steel max force",
   "What standards are used in our tests?",
   "Show compression test results for {material}",
   "Correlate max force and tensile modulus for {material}",
@@ -30,7 +30,7 @@ const AUTOCOMPLETE_SUGGESTIONS = [
   "Show recent test results",
 ];
 
-const MATERIALS = ["Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL"];
+const MATERIALS = ["PVC", "Steel", "FEP", "Spur+ 1015", "BEAD WIRE 1.82", "UD-TP Tape", "PTL"];
 
 function getAutocompleteSuggestions(input) {
   if (!input || input.length < 2) return [];
@@ -52,7 +52,7 @@ function getAutocompleteSuggestions(input) {
   return [...new Set(suggestions)].slice(0, 5);
 }
 
-export default function ChatThread({ messages, isLoading, onSend, disabled, onBookmark, savedQueries = [], onResultClick }) {
+export default function ChatThread({ messages, isLoading, onSend, disabled, onResultClick }) {
   const [input, setInput] = useState("");
   const [activeStep, setActiveStep] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
@@ -134,20 +134,6 @@ export default function ChatThread({ messages, isLoading, onSend, disabled, onBo
                 <span className="text-[10px] text-slate-400 font-mono px-1">
                   {msg.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
-              )}
-              {msg.role === "user" && onBookmark && (
-                <button
-                  onClick={() => onBookmark(msg.content)}
-                  className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2 py-0.5 rounded font-mono ${
-                    savedQueries.includes(msg.content) ? "text-blue-600" : "text-slate-400 hover:text-slate-500"
-                  }`}
-                  title={savedQueries.includes(msg.content) ? "Bookmarked" : "Bookmark"}
-                >
-                  <svg className="w-3 h-3" fill={savedQueries.includes(msg.content) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  {savedQueries.includes(msg.content) ? "SAVED" : "SAVE"}
-                </button>
               )}
             </div>
           </div>

@@ -240,10 +240,108 @@ def get_stats_aggregation(query: dict, prop: str) -> dict:
     }
 
 
+def get_enriched_stats_aggregation(query: dict, prop: str) -> dict:
+    """Compute stats for a property using tests_enriched (for compression/flexure).
+
+    Falls back when valuecolumns_migrated returns n=0 for the given query.
+    Returns same shape as get_stats_aggregation.
+    """
+    from db import get_enriched_collection
+
+    col = get_enriched_collection()
+    enriched_query = {**query, f"computed_results.{prop}": {"$exists": True, "$ne": None}}
+    docs = list(col.find(enriched_query, {f"computed_results.{prop}": 1}))
+    vals = []
+    for doc in docs:
+        v = (doc.get("computed_results") or {}).get(prop)
+        if v is not None:
+            try:
+                vals.append(float(v))
+            except (TypeError, ValueError):
+                pass
+    if not vals:
+        return {"mean": 0, "std": 0, "min": 0, "max": 0, "n": 0}
+    mean = sum(vals) / len(vals)
+    return {
+        "mean": round(mean, 1),
+        "std": round(_compute_std(vals), 2),
+        "min": round(min(vals), 1),
+        "max": round(max(vals), 1),
+        "n": len(vals),
+    }
+
+
+def get_enriched_property_values(query: dict, prop: str, limit: int = 5000) -> list[float]:
+    """Return raw float values for a property from tests_enriched."""
+    from db import get_enriched_collection
+
+    col = get_enriched_collection()
+    enriched_query = {**query, f"computed_results.{prop}": {"$exists": True, "$ne": None}}
+    docs = list(col.find(enriched_query, {f"computed_results.{prop}": 1}).limit(limit))
+    vals = []
+    for doc in docs:
+        v = (doc.get("computed_results") or {}).get(prop)
+        if v is not None:
+            try:
+                vals.append(float(v))
+            except (TypeError, ValueError):
+                pass
+    return vals
+
+
+def get_enriched_tests(
+    query: dict,
+    properties: list[str] | None = None,
+    limit: int = 1000,
+    sort_by_date: bool = False,
+) -> list[dict]:
+    """Fetch tests from tests_enriched, which has pre-computed result values.
+
+    Use this for test types (e.g. compression) where recent _tests docs have
+    NaN values in valuecolumns_migrated but older enriched docs have real data.
+    Only returns docs that have at least one of the requested properties.
+    """
+    from db import get_enriched_collection
+
+    col = get_enriched_collection()
+
+    enriched_query = dict(query)
+    if properties:
+        enriched_query["$or"] = [
+            {f"computed_results.{p}": {"$exists": True, "$ne": None}}
+            for p in properties
+        ]
+
+    sort_spec = None
+    if sort_by_date:
+        sort_spec = [(_date_field(), -1)]
+
+    cursor = col.find(enriched_query)
+    if sort_spec:
+        cursor = cursor.sort(sort_spec)
+    cursor = cursor.limit(limit)
+
+    return list(cursor)
+
+
 def get_test_count(query: dict) -> int:
     """Count documents matching query. Queries _tests directly (all 31K docs)."""
     col = get_tests_collection()
     return col.count_documents(query)
+
+
+def get_enriched_count(query: dict, properties: list[str] | None = None) -> int:
+    """Count enriched docs that match query and have at least one of the properties."""
+    from db import get_enriched_collection
+
+    col = get_enriched_collection()
+    enriched_query = dict(query)
+    if properties:
+        enriched_query["$or"] = [
+            {f"computed_results.{p}": {"$exists": True, "$ne": None}}
+            for p in properties
+        ]
+    return col.count_documents(enriched_query)
 
 
 def get_distinct_values(field: str, query: dict | None = None) -> list:

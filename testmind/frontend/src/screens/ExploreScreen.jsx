@@ -1,15 +1,10 @@
-import { useState, useEffect } from "react";
-import { fetchExploreData } from "../api";
+import { useState, useEffect, useRef } from "react";
+import { fetchExploreData, fetchMaterials } from "../api";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Brush, Area, ComposedChart,
   BarChart, Bar, Cell,
 } from "recharts";
-
-const MATERIALS = [
-  "Steel", "FEP", "Spur+ 1015",
-  "BEAD WIRE 1.82", "UD-TP Tape", "PTL",
-];
 
 const PROPERTIES = [
   { key: "max_force_n", label: "Max Force", unit: "N" },
@@ -22,20 +17,109 @@ const PROPERTIES = [
 
 const COMPARE_COLORS = { primary: "#3b82f6", compare: "#f59e0b" };
 
+function MaterialCombobox({ materials, selected, onChange, loading: materialsLoading }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const suggestions = query.length === 0
+    ? materials.filter(m => !selected.includes(m))
+    : materials.filter(m => m.toLowerCase().includes(query.toLowerCase()) && !selected.includes(m));
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const select = (m) => {
+    if (selected.length < 2) onChange([...selected, m]);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const remove = (m) => onChange(selected.filter(s => s !== m));
+
+  const CHIP_COLORS = ["bg-blue-600 text-white", "bg-amber-500 text-white"];
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex flex-wrap gap-2 p-2 bg-white border border-slate-200 rounded-lg min-h-[42px] items-center cursor-text focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all"
+        onClick={() => { setOpen(true); containerRef.current?.querySelector("input")?.focus(); }}>
+        {selected.map((m, i) => (
+          <span key={m} className={`flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-full text-xs font-mono font-medium ${CHIP_COLORS[i]}`}>
+            {i === 1 && <span className="opacity-70 text-[10px]">vs</span>}
+            {m}
+            <button onClick={(e) => { e.stopPropagation(); remove(m); }}
+              className="opacity-70 hover:opacity-100 ml-0.5 text-[11px] leading-none">✕</button>
+          </span>
+        ))}
+        {selected.length < 2 && (
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder={materialsLoading ? "Loading…" : selected.length === 0 ? "Search materials…" : "Add comparison…"}
+            className="flex-1 min-w-[140px] text-sm font-mono text-slate-700 bg-transparent outline-none placeholder-slate-400"
+          />
+        )}
+        {selected.length === 2 && (
+          <button onClick={(e) => { e.stopPropagation(); onChange([]); }}
+            className="ml-auto text-[10px] text-slate-400 hover:text-slate-600 font-mono px-1">
+            CLEAR ALL
+          </button>
+        )}
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+          {suggestions.map((m) => (
+            <li key={m}
+              onMouseDown={(e) => { e.preventDefault(); select(m); }}
+              className="px-3 py-2 text-sm font-mono text-slate-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer">
+              {m}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function ExploreScreen({ onBack }) {
-  const [material, setMaterial] = useState(MATERIALS[0]);
+  const [materials, setMaterials] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
   const [property, setProperty] = useState(PROPERTIES[0].key);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
 
-  const [compareMaterial, setCompareMaterial] = useState(null);
   const [compareData, setCompareData] = useState(null);
   const [compareLoading, setCompareLoading] = useState(false);
+
+  const material = selectedMaterials[0] ?? null;
+  const compareMaterial = selectedMaterials[1] ?? null;
 
   const propInfo = PROPERTIES.find((p) => p.key === property) || PROPERTIES[0];
 
   useEffect(() => {
+    fetchMaterials()
+      .then((d) => {
+        const list = d.materials || [];
+        setMaterials(list);
+        if (list.length) {
+          const defaultMat = list.find((m) => m === "PVC") ?? list[0];
+          setSelectedMaterials([defaultMat]);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setMaterialsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!material) return;
     setLoading(true);
     setSelectedTest(null);
     fetchExploreData(material, property)
@@ -55,6 +139,10 @@ export default function ExploreScreen({ onBack }) {
       .catch(console.error)
       .finally(() => setCompareLoading(false));
   }, [compareMaterial, property]);
+
+  const setCompareMaterial = (m) => {
+    setSelectedMaterials(m ? [material, m].filter(Boolean) : [material].filter(Boolean));
+  };
 
   const handleDotClick = (dotData) => {
     if (!data?.individual_tests) return;
@@ -94,25 +182,17 @@ export default function ExploreScreen({ onBack }) {
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         {/* Selectors */}
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1">
+          <div className="flex-1 min-w-[280px]">
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest block mb-2 font-mono">
-              MATERIAL
+              MATERIAL{selectedMaterials.length > 1 ? "S" : ""}
+              <span className="ml-2 normal-case font-normal text-slate-400">— type to search, add a 2nd to compare</span>
             </label>
-            <div className="flex flex-wrap gap-2">
-              {MATERIALS.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setMaterial(m); if (compareMaterial === m) setCompareMaterial(null); }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono transition-all ${
-                    material === m
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-white border border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+            <MaterialCombobox
+              materials={materials}
+              selected={selectedMaterials}
+              onChange={setSelectedMaterials}
+              loading={materialsLoading}
+            />
           </div>
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest block mb-2 font-mono">
@@ -128,33 +208,6 @@ export default function ExploreScreen({ onBack }) {
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Comparison selector */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-mono">COMPARE:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {MATERIALS.filter(m => m !== material).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setCompareMaterial(compareMaterial === m ? null : m)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono transition-all ${
-                    compareMaterial === m
-                      ? "bg-amber-500 text-white shadow-sm"
-                      : "bg-white border border-slate-200 text-slate-500 hover:border-amber-400 hover:text-amber-600"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-          {compareMaterial && (
-            <button onClick={() => setCompareMaterial(null)} className="text-xs text-slate-400 hover:text-slate-500 font-mono">
-              CLEAR
-            </button>
-          )}
         </div>
 
         {/* Stats row */}

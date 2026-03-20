@@ -68,6 +68,10 @@ _RESULT_UUID_UPPER: dict[str, str] = {k.upper(): v for k, v in RESULT_UUID_TO_PR
 # Reverse mapping: property name → result type UUID
 PROPERTY_TO_RESULT_UUID: dict[str, str] = {v: k for k, v in RESULT_UUID_TO_PROPERTY.items()}
 
+# tensile_strength_mpa shares the same UUID as max_force_n but uses the Stress unit table
+# (Zwick stores both force and stress variants under the same result UUID)
+PROPERTY_TO_RESULT_UUID["tensile_strength_mpa"] = "9DB9C049-9B04-4bf1-BD29-A160E86DE691"
+
 # Map result UUIDs to the unit table that indicates stress (MPa) results
 # This helps disambiguate force vs stress when the same UUID appears with different units
 STRESS_UNIT_TABLES = frozenset({
@@ -270,6 +274,7 @@ def parse_child_id(child_id: str) -> dict:
 # Maps (result_property, preferred_unit_table) for the enrichment script.
 # For each result, we pick the unit table that gives us the desired output unit.
 PREFERRED_UNIT_TABLE: dict[str, str] = {
+    "tensile_strength_mpa": "Zwick.Unittable.Stress",
     "max_force_n": "Zwick.Unittable.Force",
     "tensile_modulus_mpa": "Zwick.Unittable.Stress",
     "elongation_at_break_pct": "Zwick.Unittable.Ratio",
@@ -288,6 +293,7 @@ PREFERRED_UNIT_TABLE: dict[str, str] = {
 # Base SI → display unit conversion factors
 # Zwick stores values in base SI: Pa for stress, m for displacement, etc.
 UNIT_CONVERSIONS: dict[str, float] = {
+    "tensile_strength_mpa": 1e-6,      # Pa → MPa
     "tensile_modulus_mpa": 1e-6,       # Pa → MPa
     "upper_yield_point_mpa": 1e-6,     # Pa → MPa
     "upper_yield_point_no_hysteresis_mpa": 1e-6,
