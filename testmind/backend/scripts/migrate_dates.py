@@ -25,11 +25,11 @@ BATCH_SIZE = 1000
 
 
 def parse_date(date_str: str) -> datetime | None:
-    """Parse DD.MM.YYYY or YYYY-MM-DD to datetime."""
+    """Parse various date formats to datetime."""
     if not date_str or not isinstance(date_str, str):
         return None
     date_str = date_str.strip()
-    for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%b-%y", "%d-%b-%Y", "%m/%d/%Y", "%d-%m-%Y"):
         try:
             return datetime.strptime(date_str, fmt)
         except ValueError:

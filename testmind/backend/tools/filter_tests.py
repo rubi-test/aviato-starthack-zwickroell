@@ -1,7 +1,7 @@
 """Tool 1: filter_tests — Search and filter tests by metadata."""
 
 from collections import Counter
-from data_access import get_tests_with_results, get_enriched_tests, get_enriched_count, get_distinct_values, get_test_count
+from data_access import get_tests_with_results, get_distinct_values, get_test_count
 from tools.utils import (
     build_date_filter,
     filter_by_date_range,
@@ -100,20 +100,23 @@ def filter_tests(
             "strain_at_max_force_pct",
         ]
 
-    # For compression/flexure on real DB, use tests_enriched which has pre-computed
-    # results. Recent _tests docs have NaN values in valuecolumns_migrated so live
-    # lookup returns nothing for those tests.
-    use_enriched = not is_mock() and test_type in ("compression", "flexure")
-
-    if use_enriched:
-        matched = get_enriched_tests(query, properties=properties_to_fetch, limit=limit, sort_by_date=True)
-    else:
-        matched = get_tests_with_results(query, properties=properties_to_fetch, limit=limit, sort_by_date=True)
+    # Fetch a larger candidate pool so we can prioritise tests with computed values.
+    # Many recent tests have NaN/absent scalar results in the DB; fetching 4× limit
+    # lets us promote older tests that do have values rather than returning an empty set.
+    fetch_limit = limit * 4 if not is_mock() else limit
+    matched = get_tests_with_results(query, properties=properties_to_fetch, limit=fetch_limit, sort_by_date=True)
 
     # For mock data with string dates, apply Python-side date filter
     if is_mock() and (date_from or date_to) and not date:
         matched = filter_by_date_range(matched, date_from, date_to)
         total = len(matched)
+
+    # Re-rank: tests with any computed value come first (still date-sorted within each tier)
+    if not is_mock() and properties_to_fetch:
+        with_values = [t for t in matched if t.get("computed_results")]
+        without_values = [t for t in matched if not t.get("computed_results")]
+        matched = (with_values + without_values)[:limit]
+    else:
         matched = matched[:limit]
 
     summaries = [test_to_summary(t) for t in matched]
@@ -122,19 +125,11 @@ def filter_tests(
     mat_counts = Counter(s["material"] for s in summaries)
     type_counts = Counter(s["test_type"] for s in summaries)
 
-    if use_enriched:
-        enriched_total = get_enriched_count(query, properties_to_fetch)
-        steps = [
-            f"Filters applied: {', '.join(filter_descriptions) or 'none'}",
-            f"Found {total} total matching tests in database",
-            f"{enriched_total} of those have computed result values (showing first {min(limit, enriched_total)})",
-        ]
-    else:
-        steps = [
-            f"Filters applied: {', '.join(filter_descriptions) or 'none'}",
-            "Queried tests collection with indexed filters",
-            f"Found {total} matching tests" + (f" (showing first {limit})" if total > limit else ""),
-        ]
+    steps = [
+        f"Filters applied: {', '.join(filter_descriptions) or 'none'}",
+        "Queried tests collection with indexed filters",
+        f"Found {total} matching tests" + (f" (showing first {limit})" if total > limit else ""),
+    ]
 
     return {
         "result": {

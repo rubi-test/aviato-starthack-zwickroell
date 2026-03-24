@@ -9,9 +9,29 @@ Usage:
 """
 
 import math
+import re
 from datetime import datetime, timedelta
 
 from db import get_tests_collection, get_values_collection, is_mock
+
+
+# ---------------------------------------------------------------------------
+# Fallback: unit-table-based result lookup for non-standard test programs
+# ---------------------------------------------------------------------------
+
+# Maps a property name to the unit table suffix that carries its value.
+# When UUID lookup returns nothing, we scan all scalar entries for the test
+# and pick the best matching value by unit table.
+_PROP_UNIT_TABLE_FALLBACK: dict[str, tuple[str, str]] = {
+    "max_force_n": ("Force", "max"),
+    "force_at_break_n": ("Force", "second_max"),
+    "upper_yield_point_mpa": ("Stress", "max"),
+    "tensile_strength_mpa": ("Stress", "max"),
+    "strain_at_max_force_pct": ("Ratio", "max"),
+    "elongation_at_break_pct": ("Ratio", "max"),
+    "work_to_max_force_j": ("Energy", "max"),
+    "work_to_break_j": ("Energy", "max"),
+}
 
 
 def _date_field() -> str:
@@ -61,25 +81,108 @@ def _lookup_result_values(tests: list[dict], properties: list[str]) -> list[dict
     if not prop_lookups:
         return tests
 
-    for test in tests:
-        test_id = test["_id"]
-        computed = {}
+    test_ids = [t["_id"] for t in tests]
+    child_ids = [child_id for _, child_id in prop_lookups]
+    child_id_to_prop = {child_id: prop_name for prop_name, child_id in prop_lookups}
 
-        for prop_name, child_id in prop_lookups:
-            vdoc = vals_col.find_one(
-                {"metadata.refId": test_id, "metadata.childId": child_id},
-                {"values": {"$slice": 1}},
+    # Single batched query instead of one find_one() per (test, property) pair
+    value_map: dict[str, dict[str, float]] = {}  # {test_id: {prop_name: value}}
+    for vdoc in vals_col.find(
+        {"metadata.refId": {"$in": test_ids}, "metadata.childId": {"$in": child_ids}},
+        {"metadata.refId": 1, "metadata.childId": 1, "values": {"$slice": 1}},
+    ):
+        tid = vdoc["metadata"]["refId"]
+        cid = vdoc["metadata"]["childId"]
+        prop_name = child_id_to_prop.get(cid)
+        if not prop_name:
+            continue
+        raw = vdoc.get("values", [])
+        if raw and not math.isnan(raw[0]):
+            value_map.setdefault(tid, {})[prop_name] = round(
+                convert_to_display_unit(prop_name, raw[0]), 4
             )
-            if vdoc:
-                raw = vdoc.get("values", [])
-                if raw and not math.isnan(raw[0]):
-                    computed[prop_name] = round(
-                        convert_to_display_unit(prop_name, raw[0]), 4
-                    )
 
-        test["computed_results"] = computed
+    for test in tests:
+        test["computed_results"] = value_map.get(test["_id"], {})
+
+    # Fallback: tests that got nothing from UUID lookup → scan by unit table
+    empty_ids = [t["_id"] for t in tests if not value_map.get(t["_id"])]
+    if empty_ids:
+        _lookup_result_values_by_unit_table(empty_ids, properties, value_map, vals_col)
+        for test in tests:
+            if not test["computed_results"]:
+                test["computed_results"] = value_map.get(test["_id"], {})
 
     return tests
+
+
+def _lookup_result_values_by_unit_table(
+    test_ids: list,
+    properties: list[str],
+    value_map: dict,
+    vals_col,
+) -> None:
+    """Fallback lookup for tests with no UUID-based results.
+
+    Scans all valuesCount=1 entries for the given test IDs and groups them
+    by unit table, then assigns properties using the _PROP_UNIT_TABLE_FALLBACK
+    mapping. Mutates value_map in-place.
+    """
+    from schema_map import convert_to_display_unit
+
+    # Which unit table suffixes do we need?
+    needed_uts: set[str] = set()
+    for prop in properties:
+        if prop in _PROP_UNIT_TABLE_FALLBACK:
+            needed_uts.add(_PROP_UNIT_TABLE_FALLBACK[prop][0])
+
+    if not needed_uts:
+        return
+
+    ut_pattern = "Zwick\\.Unittable\\.(" + "|".join(re.escape(ut) for ut in needed_uts) + ")"
+
+    # Collect values grouped by (test_id, unit_table)
+    raw: dict[str, dict[str, list[float]]] = {}  # {test_id: {ut_suffix: [values]}}
+    for vdoc in vals_col.find(
+        {
+            "metadata.refId": {"$in": test_ids},
+            "metadata.childId": {"$regex": ut_pattern},
+            "valuesCount": 1,
+        },
+        {"metadata.refId": 1, "metadata.childId": 1, "values": {"$slice": 1}},
+    ):
+        tid = vdoc["metadata"]["refId"]
+        cid = vdoc["metadata"]["childId"]
+        val = vdoc.get("values", [None])[0]
+        if val is None or math.isnan(val):
+            continue
+        m = re.search(r"Zwick\.Unittable\.(\w+)", cid)
+        if not m or m.group(1) not in needed_uts:
+            continue
+        raw.setdefault(tid, {}).setdefault(m.group(1), []).append(val)
+
+    # Assign properties from the collected values
+    for prop in properties:
+        if prop not in _PROP_UNIT_TABLE_FALLBACK:
+            continue
+        ut_suffix, method = _PROP_UNIT_TABLE_FALLBACK[prop]
+
+        for tid, ut_map in raw.items():
+            if value_map.get(tid, {}).get(prop) is not None:
+                continue  # already have it from UUID lookup
+            vals_list = sorted(ut_map.get(ut_suffix, []), reverse=True)
+            if not vals_list:
+                continue
+            if method == "max":
+                raw_val = vals_list[0]
+            elif method == "second_max":
+                raw_val = vals_list[1] if len(vals_list) >= 2 else None
+            else:
+                raw_val = None
+            if raw_val is not None:
+                value_map.setdefault(tid, {})[prop] = round(
+                    convert_to_display_unit(prop, raw_val), 4
+                )
 
 
 def _lookup_single_property(test_ids: list[str], prop: str) -> dict[str, float]:
@@ -99,15 +202,14 @@ def _lookup_single_property(test_ids: list[str], prop: str) -> dict[str, float]:
     vals_col = get_values_collection()
 
     results = {}
-    for tid in test_ids:
-        vdoc = vals_col.find_one(
-            {"metadata.refId": tid, "metadata.childId": child_id},
-            {"values": {"$slice": 1}},
-        )
-        if vdoc:
-            raw = vdoc.get("values", [])
-            if raw and not math.isnan(raw[0]):
-                results[tid] = round(convert_to_display_unit(prop, raw[0]), 4)
+    for vdoc in vals_col.find(
+        {"metadata.refId": {"$in": test_ids}, "metadata.childId": child_id},
+        {"metadata.refId": 1, "values": {"$slice": 1}},
+    ):
+        tid = vdoc["metadata"]["refId"]
+        raw = vdoc.get("values", [])
+        if raw and not math.isnan(raw[0]):
+            results[tid] = round(convert_to_display_unit(prop, raw[0]), 4)
 
     return results
 
