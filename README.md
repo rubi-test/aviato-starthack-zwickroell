@@ -14,6 +14,8 @@ Ask a question in plain English. Get a precise, data-backed answer with charts, 
 
 ## What You Can Do
 
+Demo Video: https://drive.google.com/file/d/1k2fj_verkhkl3RkXBW2qIB1XBpvZcWte/view
+
 ### Dashboard — Your Lab at a Glance
 
 The home screen gives you a live pulse of your operation the moment you open the app.
